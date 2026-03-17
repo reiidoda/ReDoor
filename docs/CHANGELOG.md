@@ -668,6 +668,21 @@ Use this template for each docs update:
   - `docs/OPEN_SOURCE_STATUS.md`
   - `docs/CHANGELOG.md`
 
+## 2026-03-17 (Issue #4 workflow Node 24 compatibility upgrades)
+- Scope:
+  - Upgraded core GitHub Actions in active workflows to Node 24-compatible major versions.
+  - Updated workflow action references for checkout, setup-go, upload-artifact, github-script, and attest-build-provenance.
+- Why:
+  - Remove Node 20 deprecation annotations from standard workflow runs.
+- Files:
+  - `.github/workflows/codeql-analysis.yml`
+  - `.github/workflows/fuzz-nightly.yml`
+  - `.github/workflows/release-integrity.yml`
+  - `.github/workflows/reliability-nightly.yml`
+  - `.github/workflows/security-drill-kickoff.yml`
+  - `.github/workflows/security-gates.yml`
+  - `docs/CHANGELOG.md`
+
 ## 2026-03-12 (M23 release integrity and provenance)
 - Scope:
   - Added deterministic release build scripts for core Linux artifacts with checksum manifests.

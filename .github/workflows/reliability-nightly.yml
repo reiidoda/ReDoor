@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -23,7 +23,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: relay-node/go.mod
           check-latest: true
@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload reliability artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reliability-soak-artifacts
           path: itest/artifacts/*.json

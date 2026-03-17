@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -26,7 +26,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: relay-node/go.mod
           check-latest: true
@@ -65,7 +65,7 @@ jobs:
             --cosign-oidc-issuer https://token.actions.githubusercontent.com
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: redoor-core-release
           path: |
@@ -84,7 +84,7 @@ jobs:
           if-no-files-found: error
 
       - name: Attest build provenance (SLSA v1)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             dist/release/redoor-core-linux-amd64.tar.gz
