@@ -52,4 +52,13 @@ for dir in inbound_decode handshake_nested_json; do
   echo "  - $dir: $file_count fixtures"
 done
 
+echo "Checking parser fuzz harness expansion..."
+for file in \
+  "$ROOT/client/fuzz/fuzz_targets/parser_worker_ipc.rs" \
+  "$ROOT/relay-node/src/network/fuzz_untrusted_boundaries_test.go" \
+  "$ROOT/relay-node/src/onion/fuzz_mix_layer_test.go"; do
+  [[ -f "$file" ]] || fail "Missing fuzz harness: $file"
+  echo "  - found $(basename "$file")"
+done
+
 echo "PASS: parser surface policy"

@@ -17,6 +17,13 @@ fn corpus_dir() -> PathBuf {
         .join("inbound_decode")
 }
 
+fn handshake_corpus_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("fuzz")
+        .join("corpus")
+        .join("handshake_nested_json")
+}
+
 fn collect_corpus_files() -> Vec<PathBuf> {
     let dir = corpus_dir();
     let mut files = Vec::new();
@@ -139,7 +146,11 @@ fn parser_mutation_smoke_no_panics() {
         .collect();
 
     let mut rng = StdRng::seed_from_u64(0x5EED_F022);
-    let iterations = 1500usize;
+    let iterations = std::env::var("REDOOR_PARSER_FUZZ_MUTATION_ITERS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(1500usize);
 
     for i in 0..iterations {
         let seed = &seeds[i % seeds.len()];
@@ -162,4 +173,26 @@ fn parser_mutation_smoke_no_panics() {
 
         assert!(result.is_ok(), "mutation iteration {} panicked", i);
     }
+}
+
+#[test]
+fn handshake_corpus_smoke_no_panics() {
+    let dir = handshake_corpus_dir();
+    let mut seen = 0usize;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let data = fs::read(&path).expect("read handshake corpus seed");
+            let result = std::panic::catch_unwind(|| {
+                let class = fuzz_classify_untrusted_blob(&data);
+                assert!(class <= FUZZ_CLASS_ACCEPTED_HANDSHAKE);
+            });
+            assert!(result.is_ok(), "handshake seed {:?} panicked", path);
+            seen += 1;
+        }
+    }
+    assert!(seen > 0, "expected at least one handshake corpus fixture");
 }

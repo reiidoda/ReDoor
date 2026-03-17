@@ -17,7 +17,9 @@ This matrix enumerates all parser-exposed ingress paths that can process attacke
 | `envelope_json` | Relay envelope JSON blob | Rust client `engine` | Yes (Rust) | Untrusted parser worker process | `client/fuzz/fuzz_targets/inbound_decode.rs`, `client/tests/parser_fuzz_regression.rs` | Enabled (allowlist) |
 | `inner_payload_json` | Decrypted inner JSON payload | Rust client `engine` | Yes (Rust) | Untrusted parser worker process | `client/fuzz/fuzz_targets/inbound_decode.rs`, `client/tests/parser_fuzz_regression.rs` | Enabled (allowlist) |
 | `initial_message_json` | X3DH initial handshake JSON | Rust client `engine` / `crypto::x3dh` | Yes (Rust) | Untrusted parser worker process | `client/fuzz/fuzz_targets/handshake_nested_json.rs`, `client/tests/parser_fuzz_regression.rs` | Enabled (allowlist) |
-| `transport_fixed_cell` | Fixed-cell transport decode | Rust client `network::relay` | Yes (Rust) | In-process transport codec (bounded format) | unit tests in `client/src/network/relay.rs` | Enabled |
+| `parser_worker_ipc_json` | Worker IPC request framing (`op` envelope/inner/initial) | Rust client `engine` | Yes (Rust) | Untrusted parser worker process | `client/fuzz/fuzz_targets/parser_worker_ipc.rs` | Enabled (allowlist) |
+| `transport_fixed_cell` | Fixed-cell transport decode | Relay Go `network` | Yes (Go) | In-process transport codec (bounded format) | `relay-node/src/network/fuzz_untrusted_boundaries_test.go` | Enabled |
+| `mix_packet_boundary` | Mix packet parser and replay-tag handling | Relay Go `onion` | Yes (Go) | Parser worker process + bounded decode | `relay-node/src/onion/fuzz_mix_layer_test.go` | Enabled |
 | `relay_certificate_x509` | TLS cert/SPKI pin parse | Rust client `network::relay` (`x509-parser`) | Mostly Rust crate + native TLS stack interaction | In-process cert validation path | unit tests in `client/src/network/relay.rs` | Enabled |
 | `swift_message_render_text_only` | iOS rendering filter (`text/system/cover`) | Swift app `RedoorService` | Yes (Swift) | UI filter after Rust boundary | `scripts/check-auto-processing-lockdown.sh`, Swift CI gates | Enabled |
 | `attachment_file_parser` | File send/decrypt path | Rust FFI / Swift | N/A (disabled) | Disabled by policy | CI lockdown gate | Disabled (default-off) |
@@ -42,6 +44,8 @@ All untrusted JSON parser classes enforce:
   - `inbound_decode/`
   - `handshake_nested_json/`
 - Regression fixtures must remain stable for deterministic CI classification.
+- Crash promotion script: `scripts/promote-fuzz-crash-fixtures.sh` normalizes crash inputs into deterministic corpus fixtures.
+- Nightly corpus trend snapshots: `scripts/generate-fuzz-corpus-trends.sh`.
 
 ## Expansion Process (Fail-Closed)
 

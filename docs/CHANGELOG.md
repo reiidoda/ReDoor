@@ -52,6 +52,31 @@ Use this template for each docs update:
   - `docs/threat_model.md`
   - `docs/CHANGELOG.md`
 
+## 2026-03-17 (Issue #14 fuzz matrix expansion and nightly coverage tracking)
+- Scope:
+  - Added parser-worker IPC Rust fuzz target (`parser_worker_ipc`) and declared all fuzz bins for `cargo-fuzz` execution.
+  - Added Go fuzz harnesses for relay untrusted boundaries (`validateFixedTransportCell`, auth header parsing, mix packet processing).
+  - Added nightly fuzz workflow with extended runtimes, artifact retention, and corpus trend snapshots.
+  - Added deterministic crash-promotion utility for fuzz artifacts -> regression corpus fixtures.
+  - Expanded parser-fuzz gate/policy/docs to enforce new harness inventory and artifact outputs.
+- Why:
+  - Close issue #14 by broadening untrusted-boundary fuzz coverage, adding continuous nightly depth, and automating crash-to-regression promotion.
+- Files:
+  - `.github/workflows/fuzz-nightly.yml`
+  - `client/fuzz/Cargo.toml`
+  - `client/fuzz/fuzz_targets/parser_worker_ipc.rs`
+  - `client/src/engine.rs`
+  - `client/tests/parser_fuzz_regression.rs`
+  - `relay-node/src/network/fuzz_untrusted_boundaries_test.go`
+  - `relay-node/src/onion/fuzz_mix_layer_test.go`
+  - `scripts/ci-parser-fuzz.sh`
+  - `scripts/check-parser-surface-policy.sh`
+  - `scripts/promote-fuzz-crash-fixtures.sh`
+  - `scripts/generate-fuzz-corpus-trends.sh`
+  - `docs/security/PARSER_INVENTORY_MATRIX.md`
+  - `docs/ci.md`
+  - `docs/CHANGELOG.md`
+
 ## 2026-03-13 (M26 production PQ ratchet evolution and forced rekey)
 - Scope:
   - Added protocol-version compatibility enforcement in X3DH handshake (`protocol_version` tagging + responder min/current gates).

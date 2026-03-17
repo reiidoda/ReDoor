@@ -457,6 +457,12 @@ pub fn fuzz_validate_untrusted_inner_payload(sender_id: &str, plaintext: &[u8]) 
     parse_validated_untrusted_inner_payload(sender_id, plaintext).is_ok()
 }
 
+/// Parser-worker IPC request decode helper for fuzz harnesses.
+#[doc(hidden)]
+pub fn fuzz_parse_untrusted_parser_worker_request_frame(frame: &[u8]) -> bool {
+    serde_json::from_slice::<UntrustedParserWorkerRequest>(frame).is_ok()
+}
+
 #[derive(Clone, Zeroize, ZeroizeOnDrop, serde::Serialize, serde::Deserialize)]
 pub struct StoredMessage {
     pub id: String,
