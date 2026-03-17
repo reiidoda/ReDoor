@@ -21,6 +21,7 @@ required_targets=(
   "ratchet.rs"
   "inbound_decode.rs"
   "handshake_nested_json.rs"
+  "parser_worker_ipc.rs"
 )
 for target in "${required_targets[@]}"; do
   if [[ ! -f "$ROOT/client/fuzz/fuzz_targets/$target" ]]; then
@@ -28,6 +29,19 @@ for target in "${required_targets[@]}"; do
     exit 1
   fi
   echo "  - found $target"
+done
+
+echo "==> Go fuzz harness inventory"
+required_go_fuzz=(
+  "$ROOT/relay-node/src/network/fuzz_untrusted_boundaries_test.go"
+  "$ROOT/relay-node/src/onion/fuzz_mix_layer_test.go"
+)
+for file in "${required_go_fuzz[@]}"; do
+  if [[ ! -f "$file" ]]; then
+    echo "::error::missing Go fuzz harness: $file"
+    exit 1
+  fi
+  echo "  - found $(basename "$file")"
 done
 
 echo "==> Corpus pack presence"
@@ -48,5 +62,15 @@ for dir in "${required_corpus_dirs[@]}"; do
   fi
   echo "  - $dir: $count files"
 done
+
+echo "==> Crash promotion (deterministic fixtures)"
+"$ROOT/scripts/promote-fuzz-crash-fixtures.sh" \
+  "$ROOT/client/fuzz/artifacts" \
+  "$ROOT/client/fuzz/corpus/inbound_decode" \
+  "$ROOT/client/fuzz/corpus/promoted-fixtures.json"
+
+echo "==> Corpus trend snapshot"
+"$ROOT/scripts/generate-fuzz-corpus-trends.sh" \
+  "$ROOT/client/artifacts/fuzz/fuzz-corpus-trends.json"
 
 echo "PASS: parser fuzz regression gate"
