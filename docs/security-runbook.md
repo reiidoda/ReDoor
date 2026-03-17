@@ -38,6 +38,22 @@ NEW_KEY_FILE="/secure/redoor/relay_hmac.b64" \
 ./scripts/rotate-relay-hmac.sh
 ```
 
+Provider-backed rotation with explicit audit correlation ID:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+ADMIN_TOKEN="<admin-token>" \
+RELAY_URL="https://relay.example.com:8443" \
+KEY_MODE="provider" \
+KEY_PROVIDER_CMD="/usr/local/bin/redoor-key-provider relay_hmac" \
+CORRELATION_ID="inc-2026-03-17-relay-hmac-01" \
+./scripts/rotate-relay-hmac.sh
+```
+
+Notes:
+- `KEY_MODE` supports `local` (default), `env`, and `provider`.
+- Every key operation now emits `AUDIT_EVENT` lines containing `correlation_id` for incident timelines.
+
 Also rotate `ADMIN_TOKEN` if suspected compromised.
 
 ### A2. Scoped Credential Rotation + Revocation
@@ -75,6 +91,16 @@ cd /Users/aidei/Documents/github/redoor
 ./scripts/rotate-directory-signing-key.sh --output /secure/redoor/dir_signing_key.env --env-format
 ```
 
+To source from a pre-staged environment variable instead of local generation:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+export DIR_SIGNING_KEY_HEX="<64-hex-chars>"
+KEY_MODE="env" \
+CORRELATION_ID="inc-2026-03-17-dir-signing-01" \
+./scripts/rotate-directory-signing-key.sh --output /secure/redoor/dir_signing_key.env --env-format
+```
+
 Restart directory with rotated `DIR_SIGNING_KEY_HEX`.
 
 ### C. Service TLS Rotation
@@ -85,12 +111,25 @@ cd /Users/aidei/Documents/github/redoor
 ./scripts/rotate-service-cert.sh directory --cn directory.example.com --days 90
 ```
 
+Provider mode can supply a PEM private key while preserving audit traceability:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+KEY_MODE="provider" \
+KEY_PROVIDER_CMD="/usr/local/bin/redoor-key-provider relay_tls_key_pem" \
+CORRELATION_ID="inc-2026-03-17-relay-cert-01" \
+./scripts/rotate-service-cert.sh relay --cn relay.example.com --days 90
+```
+
 ## 4. Verification Checklist
 
 - relay `/health` and directory endpoints reachable
 - blockchain `/health` and transaction path healthy
 - no unauthorized publish/admin actions observed post-rotation
 - blockchain batch telemetry reviewed for drift/leak anomalies (`redoor_get_blockchain_batch_telemetry`)
+- anomaly snapshots reviewed and linked to response action IDs:
+  - relay: `GET /metrics/anomaly`
+  - directory: `GET /metrics/anomaly`
 - required CI gates passing:
   - `./scripts/ci-rust-quality.sh`
   - `./scripts/ci-go-quality.sh`
@@ -98,6 +137,43 @@ cd /Users/aidei/Documents/github/redoor
   - `./scripts/ci-memory-regression.sh`
   - `./scripts/ci-anonymity-regression.sh`
   - `./scripts/ci-reliability-soak.sh` (where applicable)
+
+## 4A. Detector IDs -> Response Actions
+
+Use these detector IDs from anomaly snapshots to trigger immediate runbook actions.
+
+| Detector ID | Typical signal | Immediate action |
+|---|---|---|
+| `relay_replay_spike` | repeated replay nonce/timestamp failures | Execute **A2 Scoped Credential Rotation + Revocation**; shorten overlap and revoke suspected fingerprints. |
+| `relay_malformed_burst` | sustained malformed payload/header failures | Execute **2 Immediate Triage** evidence capture, then tighten ingress limits and inspect parser/fuzz regressions. |
+| `relay_credential_spray` | burst of invalid scoped/HMAC auth signatures | Execute **A2 Scoped Credential Rotation + Revocation** and rotate `ADMIN_TOKEN` if admin path abuse is suspected. |
+| `directory_replay_spike` | repeated non-monotonic username sequence updates | Execute **B Directory Signing Key Rotation** and investigate account update abuse patterns. |
+| `directory_malformed_burst` | burst of malformed publish/prekey payloads | Execute **2 Immediate Triage**, preserve offending request metadata, and evaluate ingress shaping changes. |
+| `directory_credential_spray` | repeated bad publish token/signature failures | Execute **2 Immediate Triage** and rotate directory publish token if compromise is suspected. |
+
+## 4B. Simulation Scenarios (Detection + Response)
+
+Run these in non-production environments to validate both detector signals and response playbook linkage.
+
+1. Relay replay spike simulation
+- replay the same signed request nonce/timestamp pair against `/relay`
+- verify `relay_replay_spike` counters in relay `/metrics/anomaly`
+- perform **A2 Scoped Credential Rotation + Revocation** and verify recovery
+
+2. Relay malformed burst simulation
+- send malformed fixed-cell payloads or missing required relay headers
+- verify `relay_malformed_burst` counters and alert reasons
+- execute **2 Immediate Triage** evidence capture sequence
+
+3. Relay credential spray simulation
+- submit invalid scoped signatures or invalid HMAC values
+- verify `relay_credential_spray` counters
+- execute **A2 Scoped Credential Rotation + Revocation** and re-check anomaly slope
+
+4. Directory replay/credential simulation
+- send non-monotonic `seq` updates and invalid publish signatures/tokens
+- verify `directory_replay_spike` and `directory_credential_spray` in directory `/metrics/anomaly`
+- execute **B Directory Signing Key Rotation** and token rotation as applicable
 
 ## 5. Post-Incident Actions
 

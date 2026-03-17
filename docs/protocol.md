@@ -78,6 +78,8 @@ Serialized and sent over transport:
 - `GET /fetch?id=<message_id>` for direct ID retrieval.
 - `GET /metrics/abuse`
   - Returns relay abuse counters (`requests_allowed`, `denied`, throttle/challenge metrics).
+- `GET /metrics/anomaly`
+  - Returns relay anomaly detector counters for `relay_replay_spike`, `relay_malformed_burst`, and `relay_credential_spray` plus runbook action mapping IDs.
 
 #### Anonymous Scoped-Token Auth (v1)
 
@@ -341,6 +343,7 @@ Directory endpoints:
 - `GET /resolve?username=...`
 - `POST /prekey/publish` (TTL-bounded prekey bundle write)
 - `GET /prekey/query/:id` (prekey bundle read if not expired)
+- `GET /metrics/anomaly` (directory anomaly detector counters + action mapping IDs)
 
 Username ownership semantics:
 - records carry signed `seq` and `expires_at` metadata;

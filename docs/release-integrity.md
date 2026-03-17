@@ -15,14 +15,16 @@ Release bundle name:
 Generate release artifacts locally:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/release-build-core.sh --output-dir dist/release
 ```
 
 Outputs:
 - `dist/release/redoor-core-linux-amd64.tar.gz`
 - `dist/release/redoor-core-linux-amd64.tar.gz.sha256`
+- `dist/release/redoor-core-linux-amd64.sbom.cdx.json` (when `syft` is installed)
 - `dist/release/SHA256SUMS`
+- `*.sig` and `*.pem` signature artifacts (when `RELEASE_SIGN_WITH_COSIGN=1`)
 
 The build script hardens reproducibility by:
 - setting `SOURCE_DATE_EPOCH` from git commit time (or env override);
@@ -35,7 +37,7 @@ The build script hardens reproducibility by:
 Run two independent rebuilds and compare resulting hashes:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/verify-reproducible-build.sh
 ```
 
@@ -53,7 +55,7 @@ Trigger:
 
 The job:
 - verifies reproducibility (`verify-reproducible-build.sh`);
-- builds release artifacts (`release-build-core.sh`);
+- builds release artifacts with enforced SBOM and Cosign signatures (`release-build-core.sh`);
 - uploads bundle + checksums;
 - emits signed provenance attestations via `actions/attest-build-provenance@v1`;
 - publishes release assets for tag builds.
@@ -63,12 +65,18 @@ The job:
 Verify checksum (and optionally GitHub attestation signer identity):
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/verify-release-integrity.sh \
   --artifact dist/release/redoor-core-linux-amd64.tar.gz \
   --checksum dist/release/redoor-core-linux-amd64.tar.gz.sha256 \
+  --sbom dist/release/redoor-core-linux-amd64.sbom.cdx.json \
+  --require-sbom \
+  --require-signatures \
+  --cosign-cert-identity-regex '^https://github.com/reiidoda/ReDoor/.github/workflows/release-integrity.yml@refs/(heads/main|tags/.*)$' \
+  --cosign-oidc-issuer https://token.actions.githubusercontent.com \
   --repo reiidoda/redoor \
   --signer-workflow reiidoda/redoor/.github/workflows/release-integrity.yml
 ```
 
 `--repo` and `--signer-workflow` enforce actor identity when verifying provenance.
+`--require-sbom` and `--require-signatures` enforce SBOM/signature presence for release assets.

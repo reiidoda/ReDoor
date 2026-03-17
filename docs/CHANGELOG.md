@@ -52,6 +52,7 @@ Use this template for each docs update:
   - `docs/threat_model.md`
   - `docs/CHANGELOG.md`
 
+<<<<<<< feat/14-fuzz-matrix-nightly-tracking
 ## 2026-03-17 (Issue #14 fuzz matrix expansion and nightly coverage tracking)
 - Scope:
   - Added parser-worker IPC Rust fuzz target (`parser_worker_ipc`) and declared all fuzz bins for `cargo-fuzz` execution.
@@ -75,6 +76,26 @@ Use this template for each docs update:
   - `scripts/generate-fuzz-corpus-trends.sh`
   - `docs/security/PARSER_INVENTORY_MATRIX.md`
   - `docs/ci.md`
+=======
+## 2026-03-17 (Issue #16 anomaly detection and response playbooks)
+- Scope:
+  - Added relay anomaly detector pipeline for replay spikes, malformed payload bursts, and credential spray failures.
+  - Added directory anomaly detector pipeline for replay/non-monotonic updates, malformed request bursts, and credential/token spray failures.
+  - Exposed read-only anomaly snapshots through relay and directory `GET /metrics/anomaly` endpoints.
+  - Added detector-to-runbook action mapping IDs and simulation guidance for detection + response validation.
+  - Added relay and directory anomaly simulation tests to validate signal generation and action-map exposure.
+- Why:
+  - Close issue #16 by providing actionable, low-noise detector signals that are explicitly tied to incident response actions.
+- Files:
+  - `relay-node/src/network/anomaly.go`
+  - `relay-node/src/network/anomaly_test.go`
+  - `relay-node/src/network/listener.go`
+  - `relay-node/src/main.go`
+  - `directory-dht/src/main.rs`
+  - `docs/security-runbook.md`
+  - `docs/security-logging.md`
+  - `docs/protocol.md`
+>>>>>>> main
   - `docs/CHANGELOG.md`
 
 ## 2026-03-13 (M26 production PQ ratchet evolution and forced rekey)

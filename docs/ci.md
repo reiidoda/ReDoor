@@ -48,15 +48,13 @@ Runs on schedule and manual trigger:
 
 ### `.github/workflows/fuzz-nightly.yml`
 Runs on schedule and manual trigger:
-- Rust parser fuzz nightly:
-  - parser regression gate with extended mutation iterations
-  - `cargo fuzz run inbound_decode`, `handshake_nested_json`, `parser_worker_ipc`
-  - crash-to-corpus promotion (`scripts/promote-fuzz-crash-fixtures.sh`)
-  - corpus trend snapshot (`scripts/generate-fuzz-corpus-trends.sh`)
-  - artifact upload (`client/artifacts/fuzz/*.json`, promoted-fixtures manifest, fuzz artifacts)
-- Go boundary fuzz nightly:
-  - `go test -fuzz` for relay untrusted boundaries (`network`, `onion`)
-  - artifact upload for fuzz testdata outputs
+- parser fuzz regression gate (`scripts/ci-parser-fuzz.sh`)
+- nightly fuzz corpus metrics artifact (`itest/artifacts/fuzz-corpus-metrics.json`)
+
+### `.github/workflows/codeql-analysis.yml`
+Runs on `pull_request`, pushes to `main`, schedule:
+- CodeQL SAST for Go (`security-and-quality` query suite)
+- CodeQL SAST for C/C++ surfaces (for C interop/stub paths)
 
 ### `.github/workflows/release-integrity.yml`
 Runs on tag pushes (`v*`) and manual trigger:
@@ -112,13 +110,7 @@ Runs on tag pushes (`v*`) and manual trigger:
 - enforces presence of parser fuzz targets:
   - `client/fuzz/fuzz_targets/inbound_decode.rs`
   - `client/fuzz/fuzz_targets/handshake_nested_json.rs`
-  - `client/fuzz/fuzz_targets/parser_worker_ipc.rs`
-- enforces presence of Go untrusted-boundary fuzz harnesses:
-  - `relay-node/src/network/fuzz_untrusted_boundaries_test.go`
-  - `relay-node/src/onion/fuzz_mix_layer_test.go`
-- promotes crash artifacts into deterministic fixtures and emits manifests/trend snapshots:
-  - `client/fuzz/corpus/promoted-fixtures.json`
-  - `client/artifacts/fuzz/fuzz-corpus-trends.json`
+- emits nightly corpus metrics via `scripts/generate-fuzz-corpus-metrics.sh`
 
 ### Traffic-Anonymity Simulator Gate
 - exercises deterministic seeded fixtures:

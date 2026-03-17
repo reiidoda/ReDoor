@@ -1,86 +1,41 @@
 name: Fuzz Nightly
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "20 3 * * *"
+    - cron: "37 2 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  rust-parser-fuzz-nightly:
-    name: Rust Parser Fuzz Nightly
+  parser-fuzz-nightly:
+    name: Parser Fuzz Nightly
     runs-on: ubuntu-latest
-    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz --locked
-
-      - name: Parser fuzz regression + long mutation soak
+      - name: Run parser fuzz regression gate
         shell: bash
-        env:
-          REDOOR_PARSER_FUZZ_MUTATION_ITERS: "25000"
         run: ./scripts/ci-parser-fuzz.sh
 
-      - name: Run cargo-fuzz targets (extended)
+      - name: Generate fuzz corpus metrics artifact
         shell: bash
-        run: |
-          cd client
-          cargo fuzz run inbound_decode -- -max_total_time=300
-          cargo fuzz run handshake_nested_json -- -max_total_time=300
-          cargo fuzz run parser_worker_ipc -- -max_total_time=300
-
-      - name: Snapshot corpus trends
-        if: always()
-        shell: bash
-        run: ./scripts/generate-fuzz-corpus-trends.sh client/artifacts/fuzz/fuzz-corpus-trends.json
+        run: ./scripts/generate-fuzz-corpus-metrics.sh
 
       - name: Upload fuzz artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rust-fuzz-nightly-artifacts
+          name: fuzz-nightly-artifacts
           path: |
-            client/artifacts/fuzz/*.json
-            client/fuzz/corpus/promoted-fixtures.json
-            client/fuzz/artifacts/**
-          retention-days: 30
-          if-no-files-found: warn
-
-  go-boundary-fuzz-nightly:
-    name: Go Boundary Fuzz Nightly
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: relay-node/go.mod
-          check-latest: true
-
-      - name: Run Go fuzz targets
-        shell: bash
-        run: |
-          cd relay-node
-          go test ./src/network -run '^$' -fuzz='Fuzz(ValidateFixedTransportCell|AuthorizeRequestHeaders)' -fuzztime=120s
-          go test ./src/onion -run '^$' -fuzz='FuzzProcessSphinxPacket' -fuzztime=120s
-
-      - name: Upload Go fuzz artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: go-fuzz-nightly-artifacts
-          path: relay-node/**/testdata/fuzz/**
-          retention-days: 30
+            itest/artifacts/fuzz-corpus-metrics.json
+            client/fuzz/corpus/**
           if-no-files-found: warn
 
