@@ -91,6 +91,9 @@ cd /Users/aidei/Documents/github/redoor
 - blockchain `/health` and transaction path healthy
 - no unauthorized publish/admin actions observed post-rotation
 - blockchain batch telemetry reviewed for drift/leak anomalies (`redoor_get_blockchain_batch_telemetry`)
+- anomaly snapshots reviewed and linked to response action IDs:
+  - relay: `GET /metrics/anomaly`
+  - directory: `GET /metrics/anomaly`
 - required CI gates passing:
   - `./scripts/ci-rust-quality.sh`
   - `./scripts/ci-go-quality.sh`
@@ -98,6 +101,43 @@ cd /Users/aidei/Documents/github/redoor
   - `./scripts/ci-memory-regression.sh`
   - `./scripts/ci-anonymity-regression.sh`
   - `./scripts/ci-reliability-soak.sh` (where applicable)
+
+## 4A. Detector IDs -> Response Actions
+
+Use these detector IDs from anomaly snapshots to trigger immediate runbook actions.
+
+| Detector ID | Typical signal | Immediate action |
+|---|---|---|
+| `relay_replay_spike` | repeated replay nonce/timestamp failures | Execute **A2 Scoped Credential Rotation + Revocation**; shorten overlap and revoke suspected fingerprints. |
+| `relay_malformed_burst` | sustained malformed payload/header failures | Execute **2 Immediate Triage** evidence capture, then tighten ingress limits and inspect parser/fuzz regressions. |
+| `relay_credential_spray` | burst of invalid scoped/HMAC auth signatures | Execute **A2 Scoped Credential Rotation + Revocation** and rotate `ADMIN_TOKEN` if admin path abuse is suspected. |
+| `directory_replay_spike` | repeated non-monotonic username sequence updates | Execute **B Directory Signing Key Rotation** and investigate account update abuse patterns. |
+| `directory_malformed_burst` | burst of malformed publish/prekey payloads | Execute **2 Immediate Triage**, preserve offending request metadata, and evaluate ingress shaping changes. |
+| `directory_credential_spray` | repeated bad publish token/signature failures | Execute **2 Immediate Triage** and rotate directory publish token if compromise is suspected. |
+
+## 4B. Simulation Scenarios (Detection + Response)
+
+Run these in non-production environments to validate both detector signals and response playbook linkage.
+
+1. Relay replay spike simulation
+- replay the same signed request nonce/timestamp pair against `/relay`
+- verify `relay_replay_spike` counters in relay `/metrics/anomaly`
+- perform **A2 Scoped Credential Rotation + Revocation** and verify recovery
+
+2. Relay malformed burst simulation
+- send malformed fixed-cell payloads or missing required relay headers
+- verify `relay_malformed_burst` counters and alert reasons
+- execute **2 Immediate Triage** evidence capture sequence
+
+3. Relay credential spray simulation
+- submit invalid scoped signatures or invalid HMAC values
+- verify `relay_credential_spray` counters
+- execute **A2 Scoped Credential Rotation + Revocation** and re-check anomaly slope
+
+4. Directory replay/credential simulation
+- send non-monotonic `seq` updates and invalid publish signatures/tokens
+- verify `directory_replay_spike` and `directory_credential_spray` in directory `/metrics/anomaly`
+- execute **B Directory Signing Key Rotation** and token rotation as applicable
 
 ## 5. Post-Incident Actions
 

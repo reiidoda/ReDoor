@@ -27,6 +27,12 @@ Redoor treats logs as sensitive metadata. Logging is allowed only when it preser
 ### Relay
 - Structured JSON logs should avoid identity-linked values.
 - Do not emit HMAC-derived request material.
+- Anomaly detector output should use detector IDs + aggregate counters only
+  (for example: `relay_replay_spike`, `relay_malformed_burst`, `relay_credential_spray`).
+
+### Directory
+- Anomaly detector output should use detector IDs + aggregate counters only
+  (for example: `directory_replay_spike`, `directory_malformed_burst`, `directory_credential_spray`).
 
 ### Blockchain
 - Admin/auth failure logs must not include token values.
