@@ -28,7 +28,7 @@ Run at least the gates affected by your change.
 
 ### 4.1 Full baseline
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 make ci
 ```
 

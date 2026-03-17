@@ -1,6 +1,6 @@
 # Foundation from Shared PDF Manuals
 
-This enterprise documentation aligns with the engineering themes from the PDFs provided in `/Users/aidei/Documents/books`.
+This enterprise documentation aligns with engineering themes from a curated set of architecture, security, and software-engineering reference PDFs.
 
 ## 1. Architecture and System Design Foundations
 

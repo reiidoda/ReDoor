@@ -31,7 +31,7 @@ For zero-click specific incident response and tabletop drill assets, use:
 ### A. Relay HMAC Rotation
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ADMIN_TOKEN="<admin-token>" \
 RELAY_URL="https://relay.example.com:8443" \
 NEW_KEY_FILE="/secure/redoor/relay_hmac.b64" \
@@ -71,7 +71,7 @@ Operational notes:
 ### B. Directory Signing Key Rotation
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/rotate-directory-signing-key.sh --output /secure/redoor/dir_signing_key.env --env-format
 ```
 
@@ -80,7 +80,7 @@ Restart directory with rotated `DIR_SIGNING_KEY_HEX`.
 ### C. Service TLS Rotation
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/rotate-service-cert.sh relay --cn relay.example.com --days 90
 ./scripts/rotate-service-cert.sh directory --cn directory.example.com --days 90
 ```

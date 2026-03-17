@@ -49,7 +49,7 @@ Current tracked issues in that milestone:
 Use project quality gates before opening a PR:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 make ci
 ```
 

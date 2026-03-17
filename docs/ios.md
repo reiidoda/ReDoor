@@ -30,7 +30,7 @@ This guide reflects the current Swift app that embeds the Rust client runtime th
 ## 3. Rust Library Build for iOS
 
 ```bash
-cd /Users/aidei/Documents/github/redoor/client
+cd <repo-root>/client
 cargo build --target aarch64-apple-ios --release
 cargo build --target aarch64-apple-ios-sim --release
 ```
@@ -42,7 +42,7 @@ Static library outputs:
 Optional header generation:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor/client
+cd <repo-root>/client
 cbindgen --config cbindgen.toml --crate redoor-client --output target/redoor.h
 ```
 

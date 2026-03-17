@@ -42,14 +42,14 @@ Redoor is a privacy-first messaging platform in a single monorepo.
 1) Bootstrap local certs and secrets:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/bootstrap-dev-secrets.sh
 ```
 
 2) Start services:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor/relay-node
+cd <repo-root>/relay-node
 RELAY_CERT_FILE=cert.pem
 RELAY_KEY_FILE=key.pem
 RELAY_ADDR=127.0.0.1:8443
@@ -57,13 +57,13 @@ go run ./src/main.go
 ```
 
 ```bash
-cd /Users/aidei/Documents/github/redoor/blockchain-node
+cd <repo-root>/blockchain-node
 BLOCKCHAIN_HTTP_ADDR=127.0.0.1:9444
 cargo run
 ```
 
 ```bash
-cd /Users/aidei/Documents/github/redoor/directory-dht
+cd <repo-root>/directory-dht
 DIR_SIGNING_KEY_HEX=<32-byte-hex-secret>
 cargo run
 ```
@@ -71,7 +71,7 @@ cargo run
 3) Run quality gates:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 make ci
 ```
 
@@ -83,7 +83,7 @@ make ci
 Local integrity checks:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/verify-reproducible-build.sh
 ./scripts/verify-release-integrity.sh --artifact dist/release/redoor-core-linux-amd64.tar.gz --repo reiidoda/redoor --signer-workflow reiidoda/redoor/.github/workflows/release-integrity.yml
 ```

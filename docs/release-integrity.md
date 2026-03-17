@@ -15,7 +15,7 @@ Release bundle name:
 Generate release artifacts locally:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/release-build-core.sh --output-dir dist/release
 ```
 
@@ -35,7 +35,7 @@ The build script hardens reproducibility by:
 Run two independent rebuilds and compare resulting hashes:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/verify-reproducible-build.sh
 ```
 
@@ -63,7 +63,7 @@ The job:
 Verify checksum (and optionally GitHub attestation signer identity):
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 ./scripts/verify-release-integrity.sh \
   --artifact dist/release/redoor-core-linux-amd64.tar.gz \
   --checksum dist/release/redoor-core-linux-amd64.tar.gz.sha256 \

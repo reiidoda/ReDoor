@@ -41,7 +41,7 @@ Creates local-only files (git-ignored):
 
 ### 4.1 Relay
 ```bash
-cd /Users/aidei/Documents/github/redoor/relay-node
+cd <repo-root>/relay-node
 RELAY_CERT_FILE=cert.pem \
 RELAY_KEY_FILE=key.pem \
 RELAY_ADDR=127.0.0.1:8443 \
@@ -50,13 +50,13 @@ go run ./src/main.go
 
 ### 4.2 Blockchain
 ```bash
-cd /Users/aidei/Documents/github/redoor/blockchain-node
+cd <repo-root>/blockchain-node
 BLOCKCHAIN_HTTP_ADDR=127.0.0.1:9444 cargo run
 ```
 
 ### 4.3 Directory
 ```bash
-cd /Users/aidei/Documents/github/redoor/directory-dht
+cd <repo-root>/directory-dht
 DIR_SIGNING_KEY_HEX=<32-byte-hex-secret> cargo run
 ```
 
@@ -64,13 +64,13 @@ DIR_SIGNING_KEY_HEX=<32-byte-hex-secret> cargo run
 
 ### 5.1 Rust client
 ```bash
-cd /Users/aidei/Documents/github/redoor/client
+cd <repo-root>/client
 cargo check
 ```
 
 ### 5.2 iOS static libraries
 ```bash
-cd /Users/aidei/Documents/github/redoor/client
+cd <repo-root>/client
 cargo build --release --target aarch64-apple-ios
 cargo build --release --target aarch64-apple-ios-sim
 ```
@@ -79,7 +79,7 @@ cargo build --release --target aarch64-apple-ios-sim
 
 ### 6.1 Full baseline
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 make ci
 ```
 
@@ -102,7 +102,7 @@ git fetch origin main --depth=200
 ### 7.2 Missing iOS static library
 If Xcode fails to link `libredoor_client.a`, build simulator target:
 ```bash
-cd /Users/aidei/Documents/github/redoor/client
+cd <repo-root>/client
 rustup target add aarch64-apple-ios-sim
 cargo build --release --target aarch64-apple-ios-sim
 ```
