@@ -154,6 +154,28 @@ fn wait_for_tcp(port: u16, timeout: Duration) -> Result<()> {
     Err(anyhow!("port {port} not ready after {:?}", timeout))
 }
 
+fn wait_for_relay_https_ready(relay_url: &str, timeout: Duration) -> Result<()> {
+    let client = reqwest::blocking::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .use_rustls_tls()
+        .build()
+        .context("build readiness probe client")?;
+    let started = Instant::now();
+    while started.elapsed() < timeout {
+        if let Ok(resp) = client.get(format!("{relay_url}/health")).send() {
+            if resp.status().is_success() {
+                return Ok(());
+            }
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+
+    Err(anyhow!(
+        "relay health endpoint not ready after {:?}: {relay_url}",
+        timeout
+    ))
+}
+
 fn write_relay_cert_pair(work_dir: &Path) -> Result<(PathBuf, PathBuf, String)> {
     let mut params = CertificateParams::new(vec!["localhost".to_string()]);
     params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
@@ -401,12 +423,13 @@ fn send_payload_with_retry(
     attempts: usize,
 ) -> i32 {
     let mut last_rc = -1;
-    for _ in 0..attempts.max(1) {
+    for attempt in 0..attempts.max(1) {
         last_rc = sender.send_payload(receiver_id, payload, "text", None, false, false, None);
         if last_rc == 0 {
             return 0;
         }
-        thread::sleep(Duration::from_millis(100));
+        let delay_ms = 100 * (attempt as u64 + 1);
+        thread::sleep(Duration::from_millis(delay_ms));
     }
     last_rc
 }
@@ -479,6 +502,8 @@ fn realtime_user_to_user_single_message() -> Result<()> {
         .env("RELAY_ADDR", format!("127.0.0.1:{relay_port}"));
     let _relay = ManagedChild::spawn("relay", relay_cmd)?;
     wait_for_tcp(relay_port, Duration::from_secs(90))?;
+    let relay_url = format!("https://localhost:{relay_port}");
+    wait_for_relay_https_ready(&relay_url, Duration::from_secs(30))?;
 
     let mut env_guard = EnvGuard::default();
     env_guard.set("RELAY_CA_B64", relay_ca_b64);
@@ -486,7 +511,6 @@ fn realtime_user_to_user_single_message() -> Result<()> {
     env_guard.remove("RELAY_ALLOW_INSECURE");
     env_guard.remove("RELAY_PINNED_CERT_HASH");
 
-    let relay_url = format!("https://localhost:{relay_port}");
     let alice = ClientEngine::new();
     let bob = ClientEngine::new();
 
@@ -496,7 +520,7 @@ fn realtime_user_to_user_single_message() -> Result<()> {
 
     let payload = "hello bob in real-time";
     let started = Instant::now();
-    let send_rc = send_payload_with_retry(&alice, &bob_id, payload, 3);
+    let send_rc = send_payload_with_retry(&alice, &bob_id, payload, 6);
     assert_eq!(send_rc, 0, "alice send failed with code {send_rc}");
 
     let mut delivered = None;
@@ -555,6 +579,8 @@ fn realtime_user_to_user_burst_delivery() -> Result<()> {
         .env("RELAY_ADDR", format!("127.0.0.1:{relay_port}"));
     let _relay = ManagedChild::spawn("relay", relay_cmd)?;
     wait_for_tcp(relay_port, Duration::from_secs(90))?;
+    let relay_url = format!("https://localhost:{relay_port}");
+    wait_for_relay_https_ready(&relay_url, Duration::from_secs(30))?;
 
     let mut env_guard = EnvGuard::default();
     env_guard.set("RELAY_CA_B64", relay_ca_b64);
@@ -562,7 +588,6 @@ fn realtime_user_to_user_burst_delivery() -> Result<()> {
     env_guard.remove("RELAY_ALLOW_INSECURE");
     env_guard.remove("RELAY_PINNED_CERT_HASH");
 
-    let relay_url = format!("https://localhost:{relay_port}");
     let alice = ClientEngine::new();
     let bob = ClientEngine::new();
 
@@ -623,6 +648,8 @@ fn realtime_transport_fixed_cells_preserve_shape_and_decode() -> Result<()> {
         .env("RELAY_FIXED_CELL_BYTES", "256");
     let _relay = ManagedChild::spawn("relay", relay_cmd)?;
     wait_for_tcp(relay_port, Duration::from_secs(90))?;
+    let relay_url = format!("https://localhost:{relay_port}");
+    wait_for_relay_https_ready(&relay_url, Duration::from_secs(30))?;
 
     let mut env_guard = EnvGuard::default();
     env_guard.set("RELAY_CA_B64", relay_ca_b64);
@@ -733,6 +760,8 @@ fn realtime_user_to_user_soak_with_reconnect_chaos() -> Result<()> {
 
     let _relay = spawn_relay(&root, &relay_cert_path, &relay_key_path, relay_port)?;
     wait_for_tcp(relay_port, Duration::from_secs(90))?;
+    let relay_url = format!("https://localhost:{relay_port}");
+    wait_for_relay_https_ready(&relay_url, Duration::from_secs(30))?;
 
     let mut env_guard = EnvGuard::default();
     env_guard.set("RELAY_CA_B64", relay_ca_b64);
@@ -740,7 +769,6 @@ fn realtime_user_to_user_soak_with_reconnect_chaos() -> Result<()> {
     env_guard.remove("RELAY_ALLOW_INSECURE");
     env_guard.remove("RELAY_PINNED_CERT_HASH");
 
-    let relay_url = format!("https://localhost:{relay_port}");
     let alice = ClientEngine::new();
     let bob = ClientEngine::new();
 

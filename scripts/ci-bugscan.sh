@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STRICT="${REDOOR_SCAN_STRICT:-0}"
 INCLUDE_SWIFT="${REDOOR_SCAN_INCLUDE_SWIFT:-0}"
 SUMMARY_JSON="${REDOOR_SCAN_SUMMARY_JSON:-}"
+SARIF_PATH="${REDOOR_SCAN_SARIF:-}"
 
 usage() {
   cat <<'EOF'
@@ -17,12 +18,14 @@ Options:
   --strict            fail if optional scanner tools are missing
   --include-swift     run Swift scanner script (slow)
   --summary-json PATH write machine-readable summary JSON
+  --sarif PATH        write SARIF report for PR/code-scanning annotations
   -h, --help          show this help
 
 Environment:
   REDOOR_SCAN_STRICT=1            same as --strict
   REDOOR_SCAN_INCLUDE_SWIFT=1     same as --include-swift
   REDOOR_SCAN_SUMMARY_JSON=path   same as --summary-json
+  REDOOR_SCAN_SARIF=path          same as --sarif
 EOF
 }
 
@@ -40,6 +43,14 @@ while [[ $# -gt 0 ]]; do
       SUMMARY_JSON="${2:-}"
       if [[ -z "$SUMMARY_JSON" ]]; then
         echo "ERROR: --summary-json requires a path" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
+    --sarif)
+      SARIF_PATH="${2:-}"
+      if [[ -z "$SARIF_PATH" ]]; then
+        echo "ERROR: --sarif requires a path" >&2
         exit 2
       fi
       shift 2
@@ -70,6 +81,9 @@ json_escape() {
 }
 
 step_rows=()
+step_names=()
+step_statuses=()
+step_details=()
 
 record_step() {
   local name="$1"
@@ -80,6 +94,9 @@ record_step() {
   escaped_status="$(json_escape "$status")"
   escaped_detail="$(json_escape "$detail")"
   step_rows+=("{\"name\":\"$escaped_name\",\"status\":\"$escaped_status\",\"detail\":\"$escaped_detail\"}")
+  step_names+=("$name")
+  step_statuses+=("$status")
+  step_details+=("$detail")
 }
 
 run_step() {
@@ -201,6 +218,57 @@ write_summary_json() {
   } > "$path"
 }
 
+write_sarif() {
+  local path="$1"
+  local dir
+  dir="$(dirname "$path")"
+  mkdir -p "$dir"
+
+  {
+    printf '{\n'
+    printf '  "version": "2.1.0",\n'
+    printf '  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",\n'
+    printf '  "runs": [\n'
+    printf '    {\n'
+    printf '      "tool": {"driver": {"name": "redoor-ci-bugscan", "informationUri": "https://github.com"}},\n'
+    printf '      "results": [\n'
+
+    local emitted=0
+    local i
+    for i in "${!step_names[@]}"; do
+      local name="${step_names[$i]}"
+      local status="${step_statuses[$i]}"
+      local detail="${step_details[$i]}"
+      local level=""
+      case "$status" in
+        fail) level="error" ;;
+        skip) level="warning" ;;
+        *) continue ;;
+      esac
+
+      local rule_id
+      rule_id="$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
+
+      if [[ "$emitted" -eq 1 ]]; then
+        printf ',\n'
+      fi
+      printf '        {"ruleId":"%s","level":"%s","message":{"text":"%s"}}' \
+        "$(json_escape "$rule_id")" \
+        "$(json_escape "$level")" \
+        "$(json_escape "$name: ${detail:-status=$status}")"
+      emitted=1
+    done
+
+    if [[ "$emitted" -eq 1 ]]; then
+      printf '\n'
+    fi
+    printf '      ]\n'
+    printf '    }\n'
+    printf '  ]\n'
+    printf '}\n'
+  } > "$path"
+}
+
 main() {
   echo "==> ReDoor multi-language bug scan"
   echo "Strict mode: $STRICT"
@@ -220,6 +288,11 @@ main() {
   if [[ -n "$SUMMARY_JSON" ]]; then
     write_summary_json "$SUMMARY_JSON"
     echo "Summary written to: $SUMMARY_JSON"
+  fi
+
+  if [[ -n "$SARIF_PATH" ]]; then
+    write_sarif "$SARIF_PATH"
+    echo "SARIF written to: $SARIF_PATH"
   fi
 
   echo "==> Scan summary: total=$steps_total passed=$steps_passed failed=$steps_failed skipped=$steps_skipped"

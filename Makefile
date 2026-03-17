@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: ci ci-relay-format ci-relay-test ci-relay ci-directory ci-blockchain ci-client ci-client-memory ci-client-memory-hygiene ci-client-parser-fuzz ci-client-anonymity ci-client-anonymity-regression ci-reliability-soak ci-release-integrity pir-proxy-feasibility pq-ratchet-evolution
+.PHONY: ci ci-relay-format ci-relay-test ci-relay ci-directory ci-blockchain ci-client ci-client-memory ci-client-memory-hygiene ci-client-parser-fuzz ci-client-anonymity ci-client-anonymity-regression ci-reliability-soak ci-release-integrity ci-bugscan pir-proxy-feasibility pq-ratchet-evolution
 
 ci: ci-relay ci-directory ci-blockchain ci-client ci-client-memory ci-client-memory-hygiene ci-client-parser-fuzz ci-client-anonymity ci-client-anonymity-regression
 	@echo "All CI component checks passed."
@@ -59,6 +59,10 @@ ci-reliability-soak:
 ci-release-integrity:
 	@set -euo pipefail; \
 	./scripts/verify-reproducible-build.sh
+
+ci-bugscan:
+	@set -euo pipefail; \
+	./scripts/ci-bugscan.sh
 
 pir-proxy-feasibility:
 	@set -euo pipefail; \
