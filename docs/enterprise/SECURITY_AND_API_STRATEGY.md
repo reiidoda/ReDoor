@@ -75,11 +75,14 @@ flowchart LR
 
 ## 7. API Security Backlog (Actionable)
 
-1. Add OpenAPI specifications and contract tests for relay/directory/blockchain APIs.
-2. Introduce request/response schema validation middleware with strict mode.
-3. Add signed API response envelopes for high-trust operations.
-4. Add centralized key rotation and key usage telemetry.
-5. Add automated chaos tests for replay and auth bypass attempts.
+M1 decomposition tasks (parent `#5`):
+1. `#28` OpenAPI contracts and strict request validation.
+2. `#29` mTLS service-plane identity and cert rotation (depends on `#28`).
+3. `#30` KMS/bootstrap key management and staged rotation framework (depends on `#29`).
+4. `#31` Security event taxonomy and structured audit-log rollout (depends on `#28`, `#30`).
+
+Detailed execution map:
+- `docs/enterprise/M1_IMPLEMENTATION_DECOMPOSITION.md`
 
 ## 8. OpenPGP Position and Advanced Messaging Security
 
