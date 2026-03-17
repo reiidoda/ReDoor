@@ -109,15 +109,15 @@ done
 echo "==> PQ handshake policy matrix regression"
 (
   cd "$ROOT/client"
-  RUSTFLAGS="$RUST_TEST_WARNING_ALLOW_FLAGS" cargo test --quiet handshake_policy_matrix_interop -- --nocapture
-  RUSTFLAGS="$RUST_TEST_WARNING_ALLOW_FLAGS" cargo test --quiet required_policy_rejects_downgraded_hybrid_message -- --nocapture
+  RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet handshake_policy_matrix_interop -- --nocapture
+  RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet required_policy_rejects_downgraded_hybrid_message -- --nocapture
 )
 
 echo "==> Realtime delivery SLO regression smoke"
 (
   cd "$ROOT/itest"
-  INTEGRATION_RUN=1 RUSTFLAGS="$RUST_TEST_WARNING_ALLOW_FLAGS" cargo test --quiet realtime_user_to_user_single_message -- --ignored --nocapture
-  INTEGRATION_RUN=1 RUSTFLAGS="$RUST_TEST_WARNING_ALLOW_FLAGS" cargo test --quiet realtime_user_to_user_burst_delivery -- --ignored --nocapture
+  INTEGRATION_RUN=1 RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet realtime_user_to_user_single_message -- --ignored --nocapture
+  INTEGRATION_RUN=1 RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet realtime_user_to_user_burst_delivery -- --ignored --nocapture
 )
 
 echo "==> cargo-deny policy (bans/licenses/sources)"
