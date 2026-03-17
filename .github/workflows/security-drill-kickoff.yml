@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create/skip quarterly kickoff issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SECURITY_DRILL_OWNERS: ${{ vars.SECURITY_DRILL_OWNERS }}
         with:
