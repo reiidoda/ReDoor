@@ -2570,11 +2570,7 @@ pub extern "C" fn redoor_get_build_info() -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn redoor_get_connection_metrics() -> *mut c_char {
     let engine = get_engine();
-    let _guard = engine.state.lock().unwrap();
-
-    // In a real implementation, these would be tracked by the RelayClient or Orchestrator.
-    // For now, we return placeholder values or basic stats if available.
-    // Ideally, RelayClient should expose a `get_metrics()` method.
+    let guard = engine.state.lock().unwrap();
 
     #[derive(serde::Serialize)]
     struct ConnMetrics {
@@ -2583,11 +2579,16 @@ pub extern "C" fn redoor_get_connection_metrics() -> *mut c_char {
         throughput_kbps: u64,
     }
 
-    // Placeholder logic - replace with actual tracking in RelayClient
+    let snapshot = guard
+        .relay_client
+        .as_ref()
+        .map(|client| client.connection_metrics_snapshot())
+        .unwrap_or_default();
+
     let metrics = ConnMetrics {
-        rtt_ms: 0,
-        packet_loss_percent: 0.0,
-        throughput_kbps: 0,
+        rtt_ms: snapshot.rtt_ms,
+        packet_loss_percent: snapshot.packet_loss_percent,
+        throughput_kbps: snapshot.throughput_kbps,
     };
 
     let json = serde_json::to_string(&metrics).unwrap();
@@ -3255,6 +3256,63 @@ mod tests {
         let total = parsed["total"].as_u64().unwrap_or_default();
 
         assert_eq!(message_store + attachment_cache + logs, total);
+    }
+
+    #[test]
+    fn test_get_connection_metrics_returns_expected_schema() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let _ = redoor_init_runtime();
+        redoor_wipe_memory();
+
+        let ptr = redoor_get_connection_metrics();
+        assert!(!ptr.is_null(), "metrics JSON pointer should not be null");
+        let json = unsafe { CString::from_raw(ptr) };
+        let parsed: serde_json::Value =
+            serde_json::from_str(json.to_str().unwrap()).expect("valid metrics JSON");
+
+        assert!(parsed.get("rtt_ms").and_then(|v| v.as_u64()).is_some());
+        assert!(parsed
+            .get("packet_loss_percent")
+            .and_then(|v| v.as_f64())
+            .is_some());
+        assert!(parsed
+            .get("throughput_kbps")
+            .and_then(|v| v.as_u64())
+            .is_some());
+    }
+
+    #[test]
+    fn test_get_connection_metrics_uses_live_relay_snapshot() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let _ = redoor_init_runtime();
+        redoor_wipe_memory();
+
+        {
+            let engine = get_engine();
+            let mut guard = engine.state.lock().unwrap();
+            guard.relay_client = Some(crate::network::relay::RelayClient::new(
+                "https://relay.example",
+            ));
+            let relay = guard
+                .relay_client
+                .as_ref()
+                .expect("relay client should be configured");
+            relay.record_connection_sample_for_tests(
+                std::time::Duration::from_millis(120),
+                4096,
+                2048,
+                true,
+            );
+        }
+
+        let ptr = redoor_get_connection_metrics();
+        assert!(!ptr.is_null(), "metrics JSON pointer should not be null");
+        let json = unsafe { CString::from_raw(ptr) };
+        let parsed: serde_json::Value =
+            serde_json::from_str(json.to_str().unwrap()).expect("valid metrics JSON");
+
+        assert!(parsed["rtt_ms"].as_u64().unwrap_or_default() > 0);
+        assert!(parsed["throughput_kbps"].as_u64().unwrap_or_default() > 0);
     }
 
     #[test]

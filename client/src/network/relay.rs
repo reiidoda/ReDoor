@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::net::TcpStream;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use x509_parser::parse_x509_certificate;
@@ -39,6 +39,36 @@ struct ScopedCredential {
     token_fingerprint: String,
     secret: Vec<u8>,
     expires_at: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RelayConnectionMetricsSnapshot {
+    pub rtt_ms: u64,
+    pub packet_loss_percent: f32,
+    pub throughput_kbps: u64,
+}
+
+#[derive(Debug)]
+struct RelayConnectionMetricsState {
+    started_at: Instant,
+    requests_total: u64,
+    requests_failed: u64,
+    requests_success: u64,
+    total_rtt_ms: u128,
+    bytes_transferred: u64,
+}
+
+impl Default for RelayConnectionMetricsState {
+    fn default() -> Self {
+        Self {
+            started_at: Instant::now(),
+            requests_total: 0,
+            requests_failed: 0,
+            requests_success: 0,
+            total_rtt_ms: 0,
+            bytes_transferred: 0,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -123,6 +153,7 @@ pub struct RelayClient {
     tls_config: RelayTlsConfig,
     transport_profile: RelayTransportProfile,
     scoped_auth_state: Arc<Mutex<ScopedAuthState>>,
+    connection_metrics: Arc<std::sync::Mutex<RelayConnectionMetricsState>>,
 }
 
 impl RelayClient {
@@ -142,6 +173,9 @@ impl RelayClient {
             tls_config,
             transport_profile,
             scoped_auth_state: Arc::new(Mutex::new(ScopedAuthState::default())),
+            connection_metrics: Arc::new(std::sync::Mutex::new(
+                RelayConnectionMetricsState::default(),
+            )),
         }
     }
 
@@ -161,7 +195,71 @@ impl RelayClient {
             tls_config,
             transport_profile,
             scoped_auth_state: Arc::new(Mutex::new(ScopedAuthState::default())),
+            connection_metrics: Arc::new(std::sync::Mutex::new(
+                RelayConnectionMetricsState::default(),
+            )),
         })
+    }
+
+    pub fn connection_metrics_snapshot(&self) -> RelayConnectionMetricsSnapshot {
+        let guard = match self.connection_metrics.lock() {
+            Ok(v) => v,
+            Err(_) => return RelayConnectionMetricsSnapshot::default(),
+        };
+
+        let rtt_ms = if guard.requests_success == 0 {
+            0
+        } else {
+            (guard.total_rtt_ms / guard.requests_success as u128) as u64
+        };
+        let packet_loss_percent = if guard.requests_total == 0 {
+            0.0
+        } else {
+            (guard.requests_failed as f32 * 100.0) / guard.requests_total as f32
+        };
+        let elapsed_ms = guard.started_at.elapsed().as_millis().max(1) as u64;
+        let throughput_kbps = (guard.bytes_transferred.saturating_mul(8)) / elapsed_ms;
+
+        RelayConnectionMetricsSnapshot {
+            rtt_ms,
+            packet_loss_percent,
+            throughput_kbps,
+        }
+    }
+
+    fn record_request_outcome(
+        &self,
+        rtt: Duration,
+        bytes_sent: usize,
+        bytes_received: usize,
+        success: bool,
+    ) {
+        let mut guard = match self.connection_metrics.lock() {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+
+        guard.requests_total = guard.requests_total.saturating_add(1);
+        if success {
+            guard.requests_success = guard.requests_success.saturating_add(1);
+            guard.total_rtt_ms = guard.total_rtt_ms.saturating_add(rtt.as_millis());
+        } else {
+            guard.requests_failed = guard.requests_failed.saturating_add(1);
+        }
+        guard.bytes_transferred = guard
+            .bytes_transferred
+            .saturating_add(bytes_sent.saturating_add(bytes_received) as u64);
+    }
+
+    #[cfg(test)]
+    pub fn record_connection_sample_for_tests(
+        &self,
+        rtt: Duration,
+        bytes_sent: usize,
+        bytes_received: usize,
+        success: bool,
+    ) {
+        self.record_request_outcome(rtt, bytes_sent, bytes_received, success);
     }
 
     pub async fn send_blob(&self, id: &str, receiver: &str, blob: &[u8]) -> Result<()> {
@@ -205,7 +303,14 @@ impl RelayClient {
             .await?;
         req = apply_request_auth_headers(req, &auth);
 
-        let res = req.send().await?;
+        let started = Instant::now();
+        let res = match req.send().await {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), blob.len(), 0, false);
+                return Err(e.into());
+            }
+        };
 
         if res.status().is_success() {
             if auth.uses_legacy_hmac() {
@@ -221,8 +326,10 @@ impl RelayClient {
                     }
                 }
             }
+            self.record_request_outcome(started.elapsed(), blob.len(), 0, true);
             Ok(())
         } else {
+            self.record_request_outcome(started.elapsed(), blob.len(), 0, false);
             Err(anyhow!("Failed to send blob"))
         }
     }
@@ -241,9 +348,17 @@ impl RelayClient {
             .await?;
         req = apply_request_auth_headers(req, &auth);
 
-        let res = req.send().await?;
+        let started = Instant::now();
+        let res = match req.send().await {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), 0, 0, false);
+                return Err(e.into());
+            }
+        };
 
         if !res.status().is_success() {
+            self.record_request_outcome(started.elapsed(), 0, 0, false);
             return Err(anyhow!("Failed to fetch blob"));
         }
 
@@ -264,12 +379,28 @@ impl RelayClient {
             let mac = hmac_header.ok_or_else(|| anyhow!("Missing X-HMAC on fetch response"))?;
             let expected = compute_hmac(key, id, "", &bytes)?;
             if mac != expected {
+                self.record_request_outcome(started.elapsed(), 0, bytes.len(), false);
                 return Err(anyhow!("HMAC verification failed for fetch blob"));
             }
         }
 
-        let trimmed = trim_pad(bytes.to_vec(), pad_header.as_ref())?;
-        decode_transport_payload(trimmed)
+        let trimmed = match trim_pad(bytes.to_vec(), pad_header.as_ref()) {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), 0, bytes.len(), false);
+                return Err(e);
+            }
+        };
+        let decoded = match decode_transport_payload(trimmed) {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), 0, bytes.len(), false);
+                return Err(e);
+            }
+        };
+
+        self.record_request_outcome(started.elapsed(), 0, bytes.len(), true);
+        Ok(decoded)
     }
 
     pub async fn fetch_pending(&self, receiver: &str) -> Result<(String, Vec<u8>)> {
@@ -340,6 +471,9 @@ impl RelayClient {
             tls_config: self.tls_config.clone(),
             transport_profile: self.transport_profile.clone(),
             scoped_auth_state: Arc::new(Mutex::new(ScopedAuthState::default())),
+            connection_metrics: Arc::new(std::sync::Mutex::new(
+                RelayConnectionMetricsState::default(),
+            )),
         }
     }
 
@@ -421,11 +555,20 @@ impl RelayClient {
             .await?;
         req = apply_request_auth_headers(req, &auth);
 
-        let res = req.send().await?;
+        let started = Instant::now();
+        let res = match req.send().await {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), req_body.len(), 0, false);
+                return Err(e.into());
+            }
+        };
         if res.status() == StatusCode::NOT_FOUND || res.status() == StatusCode::METHOD_NOT_ALLOWED {
+            self.record_request_outcome(started.elapsed(), req_body.len(), 0, true);
             return Ok(BatchFetchAttemptResult::EndpointUnavailable);
         }
         if !res.status().is_success() {
+            self.record_request_outcome(started.elapsed(), req_body.len(), 0, false);
             return Err(anyhow!(
                 "batch fetch pending failed with status {}",
                 res.status()
@@ -484,8 +627,10 @@ impl RelayClient {
         }
 
         if let Some((_, id, blob)) = best_hit {
+            self.record_request_outcome(started.elapsed(), req_body.len(), body_bytes.len(), true);
             Ok(BatchFetchAttemptResult::Hit((id, blob)))
         } else {
+            self.record_request_outcome(started.elapsed(), req_body.len(), body_bytes.len(), true);
             Ok(BatchFetchAttemptResult::Miss)
         }
     }
@@ -514,14 +659,23 @@ impl RelayClient {
             .await?;
         req = apply_request_auth_headers(req, &auth);
 
-        let res = req.send().await?;
+        let started = Instant::now();
+        let res = match req.send().await {
+            Ok(v) => v,
+            Err(e) => {
+                self.record_request_outcome(started.elapsed(), 0, 0, false);
+                return Err(e.into());
+            }
+        };
         if res.status() == StatusCode::NOT_FOUND
             || res.status() == StatusCode::BAD_REQUEST
             || res.status() == StatusCode::GONE
         {
+            self.record_request_outcome(started.elapsed(), 0, 0, true);
             return Ok(None);
         }
         if !res.status().is_success() {
+            self.record_request_outcome(started.elapsed(), 0, 0, false);
             return Err(anyhow!("fetch pending failed with status {}", res.status()));
         }
 
@@ -547,6 +701,7 @@ impl RelayClient {
         let parsed: PendingResp = serde_json::from_slice(&body_bytes)?;
         let raw_blob = base64::engine::general_purpose::STANDARD.decode(parsed.blob_base64)?;
         let blob = decode_transport_payload(raw_blob)?;
+        self.record_request_outcome(started.elapsed(), 0, body_bytes.len(), true);
         Ok(Some((parsed.id, blob)))
     }
 
@@ -2041,5 +2196,27 @@ mod tests {
         );
 
         clear_transport_profile_env();
+    }
+
+    #[test]
+    fn connection_metrics_snapshot_defaults_to_zeroes() {
+        let relay = RelayClient::new("https://relay.example");
+        let snapshot = relay.connection_metrics_snapshot();
+
+        assert_eq!(snapshot.rtt_ms, 0);
+        assert_eq!(snapshot.packet_loss_percent, 0.0);
+        assert_eq!(snapshot.throughput_kbps, 0);
+    }
+
+    #[test]
+    fn connection_metrics_snapshot_reflects_recorded_samples() {
+        let relay = RelayClient::new("https://relay.example");
+        relay.record_connection_sample_for_tests(std::time::Duration::from_millis(100), 4000, 2000, true);
+        relay.record_connection_sample_for_tests(std::time::Duration::from_millis(300), 0, 0, false);
+
+        let snapshot = relay.connection_metrics_snapshot();
+        assert_eq!(snapshot.rtt_ms, 100);
+        assert_eq!(snapshot.packet_loss_percent, 50.0);
+        assert!(snapshot.throughput_kbps > 0);
     }
 }
