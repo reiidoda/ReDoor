@@ -46,6 +46,16 @@ Runs on schedule and manual trigger:
 - realtime soak + reconnect chaos integration test
 - artifact upload (`itest/artifacts/reliability-soak.json`)
 
+### `.github/workflows/fuzz-nightly.yml`
+Runs on schedule and manual trigger:
+- parser fuzz regression gate (`scripts/ci-parser-fuzz.sh`)
+- nightly fuzz corpus metrics artifact (`itest/artifacts/fuzz-corpus-metrics.json`)
+
+### `.github/workflows/codeql-analysis.yml`
+Runs on `pull_request`, pushes to `main`, schedule:
+- CodeQL SAST for Go (`security-and-quality` query suite)
+- CodeQL SAST for C/C++ surfaces (for C interop/stub paths)
+
 ### `.github/workflows/release-integrity.yml`
 Runs on tag pushes (`v*`) and manual trigger:
 - deterministic release build for core Linux artifacts (`scripts/release-build-core.sh`)
@@ -100,6 +110,7 @@ Runs on tag pushes (`v*`) and manual trigger:
 - enforces presence of parser fuzz targets:
   - `client/fuzz/fuzz_targets/inbound_decode.rs`
   - `client/fuzz/fuzz_targets/handshake_nested_json.rs`
+- emits nightly corpus metrics via `scripts/generate-fuzz-corpus-metrics.sh`
 
 ### Traffic-Anonymity Simulator Gate
 - exercises deterministic seeded fixtures:
