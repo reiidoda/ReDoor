@@ -221,10 +221,12 @@ func HandleRelayWithAbuse(
 		msgID := r.Header.Get("X-Message-ID")
 		receiverID := r.Header.Get("X-Receiver-ID")
 		if msgID == "" || receiverID == "" {
+			RecordMalformedSignal()
 			http.Error(w, "Missing X-Message-ID or X-Receiver-ID header", http.StatusBadRequest)
 			return
 		}
 		if err := mailboxPolicy.validate(receiverID, time.Now()); err != nil {
+			RecordMalformedSignal()
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -232,13 +234,16 @@ func HandleRelayWithAbuse(
 		body, err := readBodyWithLimit(r.Body, maxBlobBytes)
 		if err != nil {
 			if err == errBodyTooLarge {
+				RecordMalformedSignal()
 				http.Error(w, "Payload too large", http.StatusRequestEntityTooLarge)
 				return
 			}
+			RecordMalformedSignal()
 			http.Error(w, "Failed to read body", http.StatusBadRequest)
 			return
 		}
 		if err := validateFixedTransportCell(body); err != nil {
+			RecordMalformedSignal()
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -1033,6 +1038,7 @@ func authorizeRequest(
 
 	if scopedToken != "" || scopedTokenSig != "" || scopedReqSig != "" || scopedTS != "" || scopedNonce != "" {
 		if scopedToken == "" || scopedTokenSig == "" || scopedReqSig == "" || scopedTS == "" || scopedNonce == "" {
+			RecordMalformedSignal()
 			return http.StatusBadRequest, "missing scoped token auth header"
 		}
 		if creds == nil {
@@ -1040,11 +1046,13 @@ func authorizeRequest(
 		}
 		clientID := scopedTokenFingerprint(scopedToken, scopedTokenSig)
 		if err := replay.validateWithScope("scoped:"+clientID, scopedTS, scopedNonce); err != nil {
+			RecordReplaySignal()
 			status, msg := statusForReplayError(err)
 			return status, msg
 		}
 		cred, ok := creds.ValidateScopedToken(scopedToken, scopedTokenSig)
 		if !ok {
+			RecordCredentialSpraySignal()
 			return http.StatusUnauthorized, "invalid or expired scoped token"
 		}
 		expected := computeScopedRequestSignature(
@@ -1059,6 +1067,7 @@ func authorizeRequest(
 			scopedNonce,
 		)
 		if !verifyHMACB64(scopedReqSig, expected) {
+			RecordCredentialSpraySignal()
 			return http.StatusUnauthorized, "invalid scoped token request signature"
 		}
 		return 0, ""
@@ -1071,17 +1080,20 @@ func authorizeRequest(
 
 	if clientID != "" || clientSig != "" || clientTS != "" || clientNonce != "" {
 		if clientID == "" || clientSig == "" || clientTS == "" || clientNonce == "" {
+			RecordMalformedSignal()
 			return http.StatusBadRequest, "missing scoped auth header"
 		}
 		if creds == nil {
 			return http.StatusInternalServerError, "scoped auth unavailable"
 		}
 		if err := replay.validateWithScope(clientID, clientTS, clientNonce); err != nil {
+			RecordReplaySignal()
 			status, msg := statusForReplayError(err)
 			return status, msg
 		}
 		cred, ok := creds.Get(clientID)
 		if !ok {
+			RecordCredentialSpraySignal()
 			return http.StatusUnauthorized, "invalid or expired scoped credential"
 		}
 		expected := computeScopedRequestSignature(
@@ -1096,12 +1108,14 @@ func authorizeRequest(
 			clientNonce,
 		)
 		if !verifyHMACB64(clientSig, expected) {
+			RecordCredentialSpraySignal()
 			return http.StatusUnauthorized, "invalid scoped signature"
 		}
 		return 0, ""
 	}
 
 	if requireScopedAuth {
+		RecordCredentialSpraySignal()
 		return http.StatusUnauthorized, "scoped auth required"
 	}
 
@@ -1110,16 +1124,19 @@ func authorizeRequest(
 			timestamp := r.Header.Get("X-HMAC-Timestamp")
 			nonce := r.Header.Get("X-HMAC-Nonce")
 			if err := replay.validateWithScope("legacy", timestamp, nonce); err != nil {
+				RecordReplaySignal()
 				status, msg := statusForReplayError(err)
 				return status, msg
 			}
 
 			clientMAC := r.Header.Get("X-HMAC")
 			if clientMAC == "" {
+				RecordMalformedSignal()
 				return http.StatusBadRequest, "Missing X-HMAC header"
 			}
 			expected := computeRequestHMAC(key, id, receiver, body, timestamp, nonce)
 			if !verifyHMACB64(clientMAC, expected) {
+				RecordCredentialSpraySignal()
 				return http.StatusUnauthorized, "Invalid HMAC"
 			}
 		}

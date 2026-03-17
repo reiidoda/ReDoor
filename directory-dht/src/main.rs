@@ -45,6 +45,58 @@ struct AppState {
     resolve_signing_key: Arc<SigningKey>,
     username_max_lease_secs: u64,
     prekey_max_ttl_secs: u64,
+    anomaly: Arc<RwLock<DirectoryAnomalyController>>,
+}
+
+#[derive(Clone)]
+struct DirectoryAnomalyController {
+    window_sec: u64,
+    replay_cfg: DetectorConfig,
+    malformed_cfg: DetectorConfig,
+    credential_cfg: DetectorConfig,
+    replay: DetectorState,
+    malformed: DetectorState,
+    credential: DetectorState,
+}
+
+#[derive(Clone, Copy)]
+struct DetectorConfig {
+    threshold: u64,
+    rate_multiplier: f64,
+}
+
+#[derive(Clone, Default)]
+struct DetectorState {
+    window_start_unix: u64,
+    current_count: u64,
+    previous_count: u64,
+    alerts: u64,
+    last_alert_at_unix: u64,
+    last_alert_count: u64,
+    last_alert_reason: String,
+    alerted_window_start_unix: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DetectorSnapshot {
+    current_window_count: u64,
+    previous_window_count: u64,
+    threshold: u64,
+    rate_multiplier: f64,
+    alerts: u64,
+    last_alert_at_unix: u64,
+    last_alert_count: u64,
+    last_alert_reason: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DirectoryAnomalySnapshot {
+    window_sec: u64,
+    generated_at_unix: u64,
+    replay_spike: DetectorSnapshot,
+    malformed_burst: DetectorSnapshot,
+    credential_spray: DetectorSnapshot,
+    action_map: HashMap<String, String>,
 }
 
 #[derive(Deserialize)]
@@ -174,6 +226,161 @@ impl IpLimiter {
     }
 }
 
+impl DirectoryAnomalyController {
+    fn from_env() -> Self {
+        let window_sec = std::env::var("DIR_ANOMALY_WINDOW_SEC")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(60);
+        let rate_multiplier = std::env::var("DIR_ANOMALY_RATE_MULTIPLIER")
+            .ok()
+            .and_then(|s| s.parse::<f64>().ok())
+            .filter(|v| *v >= 1.0)
+            .unwrap_or(3.0);
+
+        Self {
+            window_sec,
+            replay_cfg: DetectorConfig {
+                threshold: std::env::var("DIR_REPLAY_SPIKE_THRESHOLD")
+                    .ok()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .filter(|v| *v > 0)
+                    .unwrap_or(20),
+                rate_multiplier,
+            },
+            malformed_cfg: DetectorConfig {
+                threshold: std::env::var("DIR_MALFORMED_BURST_THRESHOLD")
+                    .ok()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .filter(|v| *v > 0)
+                    .unwrap_or(25),
+                rate_multiplier,
+            },
+            credential_cfg: DetectorConfig {
+                threshold: std::env::var("DIR_CREDENTIAL_SPRAY_THRESHOLD")
+                    .ok()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .filter(|v| *v > 0)
+                    .unwrap_or(30),
+                rate_multiplier,
+            },
+            replay: DetectorState::default(),
+            malformed: DetectorState::default(),
+            credential: DetectorState::default(),
+        }
+    }
+
+    fn observe_replay(&mut self) {
+        let now = now_unix_secs();
+        Self::observe_detector(now, self.window_sec, self.replay_cfg, &mut self.replay);
+    }
+
+    fn observe_malformed(&mut self) {
+        let now = now_unix_secs();
+        Self::observe_detector(
+            now,
+            self.window_sec,
+            self.malformed_cfg,
+            &mut self.malformed,
+        );
+    }
+
+    fn observe_credential(&mut self) {
+        let now = now_unix_secs();
+        Self::observe_detector(
+            now,
+            self.window_sec,
+            self.credential_cfg,
+            &mut self.credential,
+        );
+    }
+
+    fn snapshot(&mut self) -> DirectoryAnomalySnapshot {
+        let now = now_unix_secs();
+        Self::rotate(now, self.window_sec, &mut self.replay);
+        Self::rotate(now, self.window_sec, &mut self.malformed);
+        Self::rotate(now, self.window_sec, &mut self.credential);
+
+        let mut action_map = HashMap::new();
+        action_map.insert(
+            "directory_replay_spike".to_string(),
+            "runbook:section-3-b-directory-signing-key-rotation".to_string(),
+        );
+        action_map.insert(
+            "directory_malformed_burst".to_string(),
+            "runbook:section-2-immediate-triage".to_string(),
+        );
+        action_map.insert(
+            "directory_credential_spray".to_string(),
+            "runbook:section-2-immediate-triage".to_string(),
+        );
+
+        DirectoryAnomalySnapshot {
+            window_sec: self.window_sec,
+            generated_at_unix: now,
+            replay_spike: Self::to_snapshot(self.replay.clone(), self.replay_cfg),
+            malformed_burst: Self::to_snapshot(self.malformed.clone(), self.malformed_cfg),
+            credential_spray: Self::to_snapshot(self.credential.clone(), self.credential_cfg),
+            action_map,
+        }
+    }
+
+    fn observe_detector(now: u64, window_sec: u64, cfg: DetectorConfig, st: &mut DetectorState) {
+        Self::rotate(now, window_sec, st);
+        st.current_count = st.current_count.saturating_add(1);
+        if st.alerted_window_start_unix == st.window_start_unix {
+            return;
+        }
+
+        let threshold_triggered = st.current_count >= cfg.threshold;
+        let rate_triggered = st.previous_count > 0
+            && (st.current_count as f64) >= (st.previous_count as f64) * cfg.rate_multiplier;
+        if !threshold_triggered && !rate_triggered {
+            return;
+        }
+
+        st.alerts = st.alerts.saturating_add(1);
+        st.last_alert_at_unix = now;
+        st.last_alert_count = st.current_count;
+        st.last_alert_reason = if threshold_triggered {
+            "threshold".to_string()
+        } else {
+            "rate_of_change".to_string()
+        };
+        st.alerted_window_start_unix = st.window_start_unix;
+    }
+
+    fn rotate(now: u64, window_sec: u64, st: &mut DetectorState) {
+        let win = window_sec.max(1);
+        if st.window_start_unix == 0 {
+            st.window_start_unix = now - (now % win);
+            return;
+        }
+        if now < st.window_start_unix.saturating_add(win) {
+            return;
+        }
+        let elapsed = now.saturating_sub(st.window_start_unix);
+        let windows = elapsed / win;
+        st.previous_count = if windows > 1 { 0 } else { st.current_count };
+        st.current_count = 0;
+        st.window_start_unix = st.window_start_unix.saturating_add(windows * win);
+    }
+
+    fn to_snapshot(st: DetectorState, cfg: DetectorConfig) -> DetectorSnapshot {
+        DetectorSnapshot {
+            current_window_count: st.current_count,
+            previous_window_count: st.previous_count,
+            threshold: cfg.threshold,
+            rate_multiplier: cfg.rate_multiplier,
+            alerts: st.alerts,
+            last_alert_at_unix: st.last_alert_at_unix,
+            last_alert_count: st.last_alert_count,
+            last_alert_reason: st.last_alert_reason,
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     println!("Starting Redoor Directory DHT Node (HTTP facade)...");
@@ -219,6 +426,7 @@ async fn main() {
         resolve_signing_key: Arc::new(resolve_signing_key),
         username_max_lease_secs,
         prekey_max_ttl_secs,
+        anomaly: Arc::new(RwLock::new(DirectoryAnomalyController::from_env())),
     };
 
     let app = Router::new()
@@ -227,6 +435,7 @@ async fn main() {
         .route("/resolve", get(resolve))
         .route("/prekey/publish", post(prekey_publish))
         .route("/prekey/query/:id", get(prekey_query))
+        .route("/metrics/anomaly", get(anomaly_metrics))
         .with_state(state.clone())
         .layer(DefaultBodyLimit::max(max_body_bytes))
         .layer(middleware::from_fn(security_headers));
@@ -279,28 +488,35 @@ async fn publish(
 
     if let Some(tok) = &state.publish_token {
         if req.token.as_deref() != Some(tok) {
+            state.anomaly.write().observe_credential();
             return (StatusCode::UNAUTHORIZED, "invalid token").into_response();
         }
     }
 
     if req.username.len() > 128 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "username too long").into_response();
     }
     if req.public_key.len() > 128 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "public key too long").into_response();
     }
     if req.signature.len() > 256 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "signature too long").into_response();
     }
     if req.seq == 0 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "seq must be >= 1").into_response();
     }
     let now = now_unix_secs();
     if req.expires_at <= now {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "expires_at must be in the future").into_response();
     }
     let max_allowed_expiry = now.saturating_add(state.username_max_lease_secs.max(60));
     if req.expires_at > max_allowed_expiry {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "expires_at exceeds lease policy").into_response();
     }
     if let Err(msg) = verify_publish_signature(
@@ -310,11 +526,15 @@ async fn publish(
         req.expires_at,
         &req.signature,
     ) {
+        state.anomaly.write().observe_credential();
         return (StatusCode::BAD_REQUEST, msg).into_response();
     }
     let public_key_bytes = match hex::decode(&req.public_key) {
         Ok(v) => v,
-        Err(_) => return (StatusCode::BAD_REQUEST, "invalid public key hex").into_response(),
+        Err(_) => {
+            state.anomaly.write().observe_malformed();
+            return (StatusCode::BAD_REQUEST, "invalid public key hex").into_response();
+        }
     };
 
     {
@@ -328,6 +548,7 @@ async fn publish(
                     .into_response();
             }
             if req.seq <= existing.seq {
+                state.anomaly.write().observe_replay();
                 return (
                     StatusCode::CONFLICT,
                     "non-monotonic sequence for username update",
@@ -335,6 +556,7 @@ async fn publish(
                     .into_response();
             }
         } else if req.seq != 1 {
+            state.anomaly.write().observe_replay();
             return (StatusCode::CONFLICT, "first claim must start at seq=1").into_response();
         }
         map.insert(
@@ -448,22 +670,29 @@ async fn prekey_publish(
 
     if let Some(tok) = &state.publish_token {
         if req.token.as_deref() != Some(tok) {
+            state.anomaly.write().observe_credential();
             return (StatusCode::UNAUTHORIZED, "invalid token").into_response();
         }
     }
 
     if req.id.is_empty() || req.id.len() > 256 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "invalid prekey id").into_response();
     }
     if req.data_b64.is_empty() || req.data_b64.len() > 128 * 1024 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "invalid prekey payload").into_response();
     }
 
     let payload = match B64.decode(req.data_b64.as_bytes()) {
         Ok(v) => v,
-        Err(_) => return (StatusCode::BAD_REQUEST, "invalid base64 payload").into_response(),
+        Err(_) => {
+            state.anomaly.write().observe_malformed();
+            return (StatusCode::BAD_REQUEST, "invalid base64 payload").into_response();
+        }
     };
     if payload.len() > 64 * 1024 {
+        state.anomaly.write().observe_malformed();
         return (StatusCode::BAD_REQUEST, "prekey payload too large").into_response();
     }
 
@@ -512,6 +741,12 @@ async fn prekey_query(
         }
         None => (StatusCode::NOT_FOUND, "not found").into_response(),
     }
+}
+
+async fn anomaly_metrics(State(state): State<AppState>) -> impl IntoResponse {
+    let mut anomaly = state.anomaly.write();
+    let snapshot = anomaly.snapshot();
+    (StatusCode::OK, Json(snapshot)).into_response()
 }
 
 fn load_resolve_signing_key() -> Result<SigningKey, &'static str> {
@@ -590,6 +825,7 @@ mod tests {
             resolve_signing_key: Arc::new(signing_key(42)),
             username_max_lease_secs: 3600,
             prekey_max_ttl_secs: 3600,
+            anomaly: Arc::new(RwLock::new(DirectoryAnomalyController::from_env())),
         }
     }
 
@@ -961,5 +1197,83 @@ mod tests {
 
         let map = state.prekey_store.read();
         assert!(!map.contains_key("expired"));
+    }
+
+    #[tokio::test]
+    async fn anomaly_records_replay_and_credential_signals() {
+        let state = test_state();
+        let sk = signing_key(77);
+        let pk = hex::encode(sk.verifying_key().to_bytes());
+        let seq = 1;
+        let expires_at = now_unix_secs().saturating_add(120);
+        let sig = hex::encode(
+            sk.sign(&publish_signing_message("alice", &pk, seq, expires_at))
+                .to_bytes(),
+        );
+
+        let first = publish_call(
+            state.clone(),
+            PublishReq {
+                username: "alice".to_string(),
+                public_key: pk.clone(),
+                signature: sig.clone(),
+                seq,
+                expires_at,
+                token: None,
+            },
+        )
+        .await;
+        assert_eq!(first.status(), StatusCode::OK);
+
+        let replay = publish_call(
+            state.clone(),
+            PublishReq {
+                username: "alice".to_string(),
+                public_key: pk,
+                signature: sig,
+                seq,
+                expires_at,
+                token: None,
+            },
+        )
+        .await;
+        assert_eq!(replay.status(), StatusCode::CONFLICT);
+
+        let bad_sig = publish_call(
+            state.clone(),
+            PublishReq {
+                username: "mallory".to_string(),
+                public_key: "11".repeat(32),
+                signature: "22".repeat(64),
+                seq: 1,
+                expires_at: now_unix_secs().saturating_add(120),
+                token: None,
+            },
+        )
+        .await;
+        assert_eq!(bad_sig.status(), StatusCode::BAD_REQUEST);
+
+        let snapshot = state.anomaly.write().snapshot();
+        assert!(snapshot.replay_spike.current_window_count > 0);
+        assert!(snapshot.credential_spray.current_window_count > 0);
+    }
+
+    #[tokio::test]
+    async fn anomaly_metrics_exposes_action_map() {
+        let state = test_state();
+        state.anomaly.write().observe_malformed();
+
+        let resp = anomaly_metrics(State(state)).await.into_response();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let snapshot: DirectoryAnomalySnapshot = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            snapshot
+                .action_map
+                .get("directory_malformed_burst")
+                .map(String::as_str),
+            Some("runbook:section-2-immediate-triage")
+        );
     }
 }

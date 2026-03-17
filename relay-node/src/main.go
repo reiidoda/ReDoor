@@ -60,6 +60,8 @@ func main() {
 	// Max relay payload size in bytes. Defaults: 256 KiB.
 	maxBlobBytes := parseIntEnv("RELAY_MAX_BLOB_BYTES", 256*1024)
 	abuse := network.NewAbuseControllerFromEnv(maxPending)
+	anomaly := network.NewAnomalyControllerFromEnv()
+	network.SetAnomalyController(anomaly)
 
 	mux := http.NewServeMux()
 
@@ -75,6 +77,7 @@ func main() {
 	mux.HandleFunc("/fetch_pending", rl.Wrap(network.HandleFetchPendingWithAbuse(store, ks, credentialStore, requireScopedAuth, abuse)))
 	mux.HandleFunc("/fetch_pending_batch", rl.Wrap(network.HandleFetchPendingBatchWithAbuse(store, ks, credentialStore, requireScopedAuth, abuse)))
 	mux.HandleFunc("/metrics/abuse", network.HandleAbuseMetrics(abuse))
+	mux.HandleFunc("/metrics/anomaly", network.HandleAnomalyMetrics(anomaly))
 	mux.HandleFunc("/metrics/mix", network.HandleMixMetrics())
 	mux.HandleFunc("/metrics/chaff", network.HandleChaffMetrics())
 
