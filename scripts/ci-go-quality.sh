@@ -50,7 +50,7 @@ if [[ -n "$DIFF_RANGE" ]]; then
   )
 else
   while IFS= read -r path; do
-    [[ -n "$path" ]] && CHANGED_GO_FILES+=("${path#$ROOT/}")
+    [[ -n "$path" ]] && CHANGED_GO_FILES+=("${path#"$ROOT"/}")
   done < <(find "$GO_MODULE_DIR" -type f -name '*.go')
 fi
 
