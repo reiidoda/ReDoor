@@ -35,11 +35,14 @@ Scope:
 - formal API schema contracts and request validation.
 - key management and rotation framework.
 
-Candidate issues:
-1. Add OpenAPI specs and strict schema validators for relay/directory/blockchain.
-2. Add mTLS between service planes with cert rotation support.
-3. Introduce centralized secrets/KMS bootstrap.
-4. Add security event taxonomy and structured audit logs.
+Implementation decomposition (tracked):
+1. `#28` OpenAPI contracts and strict request validation.
+2. `#29` mTLS service-plane identity and cert rotation.
+3. `#30` KMS/bootstrap key management and staged rotation framework.
+4. `#31` Security event taxonomy and structured audit-log rollout.
+
+Execution map:
+- `docs/enterprise/M1_IMPLEMENTATION_DECOMPOSITION.md`
 
 ### Milestone M2: Data and Event Platform
 

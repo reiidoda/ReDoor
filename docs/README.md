@@ -35,6 +35,7 @@
 - [Data/Scalability/Performance Strategy](enterprise/DATA_SCALABILITY_AND_PERFORMANCE.md)
 - [Testing/Quality/Metrics/SCM](enterprise/TESTING_QUALITY_METRICS_AND_SCM.md)
 - [Requirements and Roadmap](enterprise/REQUIREMENTS_AND_ROADMAP.md)
+- [M1 Implementation Decomposition](enterprise/M1_IMPLEMENTATION_DECOMPOSITION.md)
 - [SCM and Maintenance](enterprise/SCM_AND_MAINTENANCE.md)
 - [UML Views](enterprise/UML.md)
 - [PDF Foundations](enterprise/PDF_FOUNDATION.md)

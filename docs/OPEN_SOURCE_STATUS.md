@@ -26,6 +26,8 @@ This document is the contributor-facing status board for what is complete and wh
 - `#2` Runtime telemetry: implement non-placeholder relay connection metrics in FFI
 - `#4` CI/workflows: upgrade actions/workflows for Node 24 compatibility
 - `#5` Roadmap: decompose enterprise M1 candidate scope into implementation tasks
+  - decomposition doc: `docs/enterprise/M1_IMPLEMENTATION_DECOMPOSITION.md`
+  - tracked tasks: `#28`, `#29`, `#30`, `#31`
 - `#6` Privacy track: define PIR/proxy deployability graduation plan
   - plan doc: `docs/security/PIR_PROXY_DEPLOYABILITY_GRADUATION_PLAN.md`
   - follow-up tasks: `#23`, `#24`, `#25`, `#26`

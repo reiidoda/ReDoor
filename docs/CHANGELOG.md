@@ -652,6 +652,22 @@ Use this template for each docs update:
   - `docs/OPEN_SOURCE_STATUS.md`
   - `docs/CHANGELOG.md`
 
+## 2026-03-17 (Issue #5 enterprise M1 decomposition to execution tasks)
+- Scope:
+  - Added a dedicated M1 decomposition document mapping candidate scope to concrete tracker issues with dependencies and acceptance summaries.
+  - Created actionable tracker tasks for M1 execution: `#28`, `#29`, `#30`, `#31`.
+  - Updated enterprise roadmap/security strategy/index docs and open-source status board to link decomposition artifacts.
+- Why:
+  - Make enterprise M1 contributor-ready so tasks can be picked directly from the tracker.
+- Files:
+  - `docs/enterprise/M1_IMPLEMENTATION_DECOMPOSITION.md`
+  - `docs/enterprise/REQUIREMENTS_AND_ROADMAP.md`
+  - `docs/enterprise/SECURITY_AND_API_STRATEGY.md`
+  - `docs/enterprise/README.md`
+  - `docs/README.md`
+  - `docs/OPEN_SOURCE_STATUS.md`
+  - `docs/CHANGELOG.md`
+
 ## 2026-03-12 (M23 release integrity and provenance)
 - Scope:
   - Added deterministic release build scripts for core Linux artifacts with checksum manifests.
