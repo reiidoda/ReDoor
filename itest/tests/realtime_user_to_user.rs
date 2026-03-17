@@ -155,9 +155,10 @@ fn wait_for_tcp(port: u16, timeout: Duration) -> Result<()> {
 }
 
 fn wait_for_relay_https_ready(relay_url: &str, timeout: Duration) -> Result<()> {
-    let client = reqwest::blocking::Client::builder()
+    let client = HttpClient::builder()
         .danger_accept_invalid_certs(true)
         .use_rustls_tls()
+        .timeout(timeout)
         .build()
         .context("build readiness probe client")?;
     let started = Instant::now();
