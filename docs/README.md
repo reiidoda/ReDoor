@@ -60,6 +60,7 @@
 - [PQ Ratchet Evolution Prototype](security/PQ_RATCHET_EVOLUTION_PROTOTYPE.md)
 - [PQ Ratchet Evolution Artifact (JSON)](security/pq-ratchet-evolution-report.v1.json)
 - [PIR/Proxy Retrieval Feasibility Spike](security/PIR_PROXY_MAILBOX_RETRIEVAL_SPIKE.md)
+- [PIR/Proxy Deployability Graduation Plan](security/PIR_PROXY_DEPLOYABILITY_GRADUATION_PLAN.md)
 - [PIR/Proxy Feasibility Artifact (JSON)](security/pir-proxy-feasibility-report.v1.json)
 - [Memory Zeroization Matrix](security/MEMORY_ZEROIZATION_MATRIX.md)
 - [Anonymity Regression Baseline](security/traffic-linkability-baseline.v1.json)

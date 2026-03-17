@@ -66,8 +66,10 @@ The goal is to continuously reduce attack surface, increase attack cost, and fai
 - Evaluate private-information-retrieval or proxy retrieval variants for reducing receiver-interest leakage.
 - Status (2026-03-12): feasibility spike completed with benchmark + recommendation:
   - `docs/security/PIR_PROXY_MAILBOX_RETRIEVAL_SPIKE.md`
+  - `docs/security/PIR_PROXY_DEPLOYABILITY_GRADUATION_PLAN.md`
   - `docs/security/pir-proxy-feasibility-report.v1.json`
   - current decision: no mandatory rollout yet; keep as opt-in research profile.
+  - follow-up deployability tasks: `#23`, `#24`, `#25`, `#26`.
 
 3. Traffic-shape hardening:
 - Introduce bounded randomized schedule windows that preserve constant-rate envelopes but reduce predictable phase alignment.

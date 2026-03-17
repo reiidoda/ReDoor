@@ -637,6 +637,21 @@ Use this template for each docs update:
 - Notes:
   - Parser fuzz gate uses deterministic bounded mutation smoke for stable CI runtime.
 
+## 2026-03-17 (Issue #6 PIR/proxy deployability graduation plan)
+- Scope:
+  - Added a dedicated PIR/proxy deployability graduation plan with measurable stage gates and rollout policy.
+  - Linked the new plan from security roadmap/threat model/docs index and open-source status board.
+  - Split follow-up implementation into actionable tracker tasks (`#23`, `#24`, `#25`, `#26`).
+- Why:
+  - Move PIR/proxy retrieval from research-only posture toward an explicit, auditable graduation process.
+- Files:
+  - `docs/security/PIR_PROXY_DEPLOYABILITY_GRADUATION_PLAN.md`
+  - `docs/security/ADVANCED_MESSAGE_SECURITY.md`
+  - `docs/threat_model.md`
+  - `docs/README.md`
+  - `docs/OPEN_SOURCE_STATUS.md`
+  - `docs/CHANGELOG.md`
+
 ## 2026-03-12 (M23 release integrity and provenance)
 - Scope:
   - Added deterministic release build scripts for core Linux artifacts with checksum manifests.
