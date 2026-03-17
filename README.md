@@ -89,9 +89,8 @@ cd /Users/aidei/Documents/github/redoor
 ```
 
 ## Project Status and Roadmap
-- Active open-source readiness milestone: `M27 - Open Source Readiness & Unfinished Work`
-- Current open tracking issues: `#212` to `#218`
-- Canonical status board: `docs/OPEN_SOURCE_STATUS.md`
+- Open implementation tracker: `https://github.com/reiidoda/ReDoor/issues`
+- Canonical status board: `docs/OPEN_SOURCE_STATUS.md` (source of truth for sync owner/cadence and current priority issues)
 
 ## Contributing and Governance
 - Contribution guide: `CONTRIBUTING.md`

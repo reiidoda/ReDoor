@@ -620,6 +620,20 @@ Use this template for each docs update:
   - `Makefile`
   - `docs/ci.md`
   - `docs/CHANGELOG.md`
+
+## 2026-03-17 (Issue #7 status-board tracker synchronization)
+- Scope:
+  - Replaced stale status references (`#212..#218` / old milestone wording) with current repository issue tracker references.
+  - Added explicit source-of-truth policy in `docs/OPEN_SOURCE_STATUS.md` including update owner, last-synced date, and sync cadence.
+  - Aligned contributor-facing status sections in `README.md`, `CONTRIBUTING.md`, and `OO_DESIGN.md` with current issue IDs and tracker links.
+- Why:
+  - Keep open-source status documentation synchronized with this repository tracker and prevent drift across top-level docs.
+- Files:
+  - `docs/OPEN_SOURCE_STATUS.md`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `OO_DESIGN.md`
+  - `docs/CHANGELOG.md`
 - Notes:
   - Parser fuzz gate uses deterministic bounded mutation smoke for stable CI runtime.
 

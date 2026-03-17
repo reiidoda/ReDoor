@@ -102,9 +102,9 @@ sequenceDiagram
 - Keep lifecycle wipe contracts centralized and regression-tested.
 
 ## 9. Open Source Implementation Gaps (Tracked)
-- iOS runtime still includes linker stubs that must be replaced with real runtime wiring (`#212`).
-- Runtime/FFI connection telemetry currently exposes placeholder metrics and needs full transport integration (`#213`).
-- Deterministic end-to-end integration coverage remains partially opt-in and should be promoted in CI tiers (`#214`).
+- iOS runtime still includes linker stubs that must be replaced with real runtime wiring (`#1`).
+- Runtime/FFI connection telemetry currently exposes placeholder metrics and needs full transport integration (`#2`).
+- Security test coverage depth and nightly fuzz tracking are in active implementation (`#14`).
 
 Contributor tracking source of truth: `docs/OPEN_SOURCE_STATUS.md`.
 
