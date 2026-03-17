@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 OUT_DIR="$ROOT/dist/release"
+RELEASE_REQUIRE_SBOM="${RELEASE_REQUIRE_SBOM:-0}"
+RELEASE_SIGN_WITH_COSIGN="${RELEASE_SIGN_WITH_COSIGN:-0}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --output-dir)
@@ -28,6 +30,16 @@ for cmd in cargo go git sha256sum tar gzip mktemp; do
     exit 1
   fi
 done
+
+if [[ "$RELEASE_REQUIRE_SBOM" == "1" ]] && ! command -v syft >/dev/null 2>&1; then
+  echo "::error::syft is required when RELEASE_REQUIRE_SBOM=1" >&2
+  exit 1
+fi
+
+if [[ "$RELEASE_SIGN_WITH_COSIGN" == "1" ]] && ! command -v cosign >/dev/null 2>&1; then
+  echo "::error::cosign is required when RELEASE_SIGN_WITH_COSIGN=1" >&2
+  exit 1
+fi
 
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --pretty=%ct)}"
 GIT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
@@ -91,6 +103,7 @@ ARTIFACT_PATH="$OUT_DIR/${ARTIFACT_BASENAME}.tar.gz"
 TAR_PATH="$OUT_DIR/${ARTIFACT_BASENAME}.tar"
 CHECKSUM_PATH="$OUT_DIR/${ARTIFACT_BASENAME}.tar.gz.sha256"
 MANIFEST_PATH="$OUT_DIR/SHA256SUMS"
+SBOM_PATH="$OUT_DIR/${ARTIFACT_BASENAME}.sbom.cdx.json"
 
 echo "==> Packaging deterministic tarball"
 if date -u -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S >/dev/null 2>&1; then
@@ -150,7 +163,41 @@ sha256sum "$ARTIFACT_PATH" | awk '{print $1 "  '"${ARTIFACT_BASENAME}"'.tar.gz"}
   sha256sum "$ARTIFACT_PATH" | awk '{print $1 "  '"${ARTIFACT_BASENAME}"'.tar.gz"}'
 } > "$MANIFEST_PATH"
 
+if command -v syft >/dev/null 2>&1; then
+  echo "==> Generating CycloneDX SBOM"
+  syft "$ARTIFACT_PATH" -o "cyclonedx-json=$SBOM_PATH"
+elif [[ "$RELEASE_REQUIRE_SBOM" == "1" ]]; then
+  echo "::error::SBOM generation required but syft was not found" >&2
+  exit 1
+else
+  echo "Skipping SBOM generation (install syft or set RELEASE_REQUIRE_SBOM=1 to enforce)."
+fi
+
+if [[ "$RELEASE_SIGN_WITH_COSIGN" == "1" ]]; then
+  echo "==> Signing release artifacts with cosign"
+  sign_blob() {
+    local file="$1"
+    local sig_path="${file}.sig"
+    local cert_path="${file}.pem"
+    if [[ -n "${COSIGN_KEY:-}" ]]; then
+      cosign sign-blob --yes --key env://COSIGN_KEY --output-signature "$sig_path" --output-certificate "$cert_path" "$file"
+    else
+      cosign sign-blob --yes --output-signature "$sig_path" --output-certificate "$cert_path" "$file"
+    fi
+  }
+
+  sign_blob "$ARTIFACT_PATH"
+  sign_blob "$CHECKSUM_PATH"
+  sign_blob "$MANIFEST_PATH"
+  if [[ -f "$SBOM_PATH" ]]; then
+    sign_blob "$SBOM_PATH"
+  fi
+fi
+
 echo "Built release artifacts:"
 echo "  - $ARTIFACT_PATH"
 echo "  - $CHECKSUM_PATH"
 echo "  - $MANIFEST_PATH"
+if [[ -f "$SBOM_PATH" ]]; then
+  echo "  - $SBOM_PATH"
+fi
