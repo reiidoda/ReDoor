@@ -398,11 +398,10 @@ fn send_payload_with_retry(
     sender: &ClientEngine,
     receiver_id: &str,
     payload: &str,
-    timeout: Duration,
+    attempts: usize,
 ) -> i32 {
-    let started = Instant::now();
     let mut last_rc = -1;
-    while started.elapsed() < timeout {
+    for _ in 0..attempts.max(1) {
         last_rc = sender.send_payload(receiver_id, payload, "text", None, false, false, None);
         if last_rc == 0 {
             return 0;
@@ -497,7 +496,7 @@ fn realtime_user_to_user_single_message() -> Result<()> {
 
     let payload = "hello bob in real-time";
     let started = Instant::now();
-    let send_rc = send_payload_with_retry(&alice, &bob_id, payload, Duration::from_secs(3));
+    let send_rc = send_payload_with_retry(&alice, &bob_id, payload, 3);
     assert_eq!(send_rc, 0, "alice send failed with code {send_rc}");
 
     let mut delivered = None;
@@ -573,7 +572,7 @@ fn realtime_user_to_user_burst_delivery() -> Result<()> {
 
     let sent = vec!["msg-1", "msg-2", "msg-3"];
     for msg in &sent {
-        let rc = send_payload_with_retry(&alice, &bob_id, msg, Duration::from_secs(3));
+        let rc = send_payload_with_retry(&alice, &bob_id, msg, 3);
         assert_eq!(rc, 0, "alice send failed for {msg} with code {rc}");
     }
 
@@ -766,7 +765,7 @@ fn realtime_user_to_user_soak_with_reconnect_chaos() -> Result<()> {
             let payload = format!("soak-{cycle:03}-{msg_index:04}");
             metrics.total_send_attempts += 1;
 
-            let rc = send_payload_with_retry(&alice, &bob_id, &payload, Duration::from_secs(3));
+            let rc = send_payload_with_retry(&alice, &bob_id, &payload, 3);
             if rc != 0 {
                 metrics.send_failures += 1;
                 continue;
