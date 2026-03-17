@@ -2,9 +2,16 @@
 
 This document is the contributor-facing status board for what is complete and what still needs implementation.
 
-## Current Active Milestone
+## Source Of Truth
 
-- `M27 - Open Source Readiness & Unfinished Work`
+- Canonical tracker: `https://github.com/reiidoda/ReDoor/issues`
+- Open implementation query: `https://github.com/reiidoda/ReDoor/issues?q=is%3Aissue+is%3Aopen`
+- Last synced: `2026-03-17`
+- Update owner: `maintainers (docs governance)`
+- Sync cadence:
+  - at least once per week,
+  - on every issue open/close affecting contributor-facing status,
+  - before release-tag PRs.
 
 ## Governance and Community Baseline
 
@@ -13,26 +20,23 @@ This document is the contributor-facing status board for what is complete and wh
 - `SUPPORT.md` published
 - `GOVERNANCE.md` published
 
-## Open Implementation Work (Tracked)
+## Open Implementation Work (Repository Tracker)
 
-- `#212` iOS runtime integration: remove production linker stubs and wire real Rust FFI
-- `#213` Telemetry: implement real relay connection metrics in Rust runtime + FFI
-- `#214` Reliability: de-risk ignored integration tests and promote deterministic E2E CI coverage
-- `#215` Documentation governance: reconcile roadmap status with closed/open GitHub workstreams
-- `#216` Enterprise roadmap M1: break candidate scope into implementation-ready public issues
-- `#217` Privacy research track: define PIR/proxy deployability gates and graduation plan
-- `#218` Open source governance: contributor workflow, issue taxonomy, and templates
-
-## Context
-
-Recent security workstreams `#196` through `#204` are closed under milestone `M26`.
-Some repository docs still include stale wording that implies parts of M26 are pending; issue `#215` tracks reconciliation.
+- `#1` iOS: replace linker stubs with real Rust FFI and remove `RedoorStubs.c`
+- `#2` Runtime telemetry: implement non-placeholder relay connection metrics in FFI
+- `#4` CI/workflows: upgrade actions/workflows for Node 24 compatibility
+- `#5` Roadmap: decompose enterprise M1 candidate scope into implementation tasks
+- `#6` Privacy track: define PIR/proxy deployability graduation plan
+- `#7` Docs governance: keep open-source status board synchronized with repository tracker
+- `#14` Security testing: expand fuzzing matrix and nightly coverage tracking
+- `#15` Key management: introduce KMS/HSM-backed signing and rotation path
+- `#16` Security ops: add relay/directory anomaly detection and response playbooks
 
 ## How This File Is Updated
 
 Update this file when:
-- a milestone is added/closed,
-- a tracked open-work issue is created/closed,
+- contributor-facing open-work issues are created/closed,
+- issue titles/scope materially change,
 - contributor priorities change.
 
 Keep this file aligned with:

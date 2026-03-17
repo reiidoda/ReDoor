@@ -11,17 +11,10 @@ Thanks for helping improve Redoor.
 
 ## Where to Pick Work
 
-Primary active milestone:
-- `M27 - Open Source Readiness & Unfinished Work`
+- Canonical status board: `docs/OPEN_SOURCE_STATUS.md`
+- Repository issue tracker: `https://github.com/reiidoda/ReDoor/issues`
 
-Current tracked issues in that milestone:
-- #212 iOS Runtime Integration: remove production linker stubs
-- #213 Telemetry: implement real relay connection metrics
-- #214 Reliability: promote deterministic E2E tests in CI
-- #215 Documentation Governance: roadmap status reconciliation
-- #216 Enterprise Roadmap M1 decomposition
-- #217 PIR/proxy deployability graduation plan
-- #218 Open-source governance and templates
+Use the status board as source of truth for current priorities and ownership cadence.
 
 ## Contribution Flow
 
