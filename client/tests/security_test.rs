@@ -2,13 +2,12 @@ use redoor_client::crypto;
 use redoor_client::ratchet::double_ratchet::RatchetSession;
 use redoor_client::storage::ephemeral::EphemeralStorage;
 use redoor_client::storage::key_manager::KeyManager;
-use std::sync::{Arc, Mutex};
 
 #[tokio::test]
 async fn test_end_to_end_flow_and_secrecy() {
     // 1. Setup Identities
-    let alice_id = crypto::ed25519::IdentityKey::generate();
-    let bob_id = crypto::ed25519::IdentityKey::generate();
+    let _alice_id = crypto::ed25519::IdentityKey::generate();
+    let _bob_id = crypto::ed25519::IdentityKey::generate();
 
     // 2. Simulate Key Exchange (X3DH)
     let (alice_secret, alice_public) = crypto::x25519::generate_keypair();

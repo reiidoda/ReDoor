@@ -84,6 +84,10 @@ CLIPPY_BASELINE_ALLOW=(
   -A clippy::useless_conversion
 )
 
+# Keep smoke/regression test output focused on real gate failures while legacy
+# dead_code/unused cleanup is still tracked separately.
+RUST_TEST_WARNING_ALLOW_FLAGS="-A dead_code -A unused_imports -A unused_variables"
+
 echo "==> Clippy policy (blocking)"
 for crate in "${RUST_CRATES[@]}"; do
   if [[ ! -f "$ROOT/$crate/Cargo.toml" ]]; then
@@ -105,15 +109,15 @@ done
 echo "==> PQ handshake policy matrix regression"
 (
   cd "$ROOT/client"
-  cargo test --quiet handshake_policy_matrix_interop -- --nocapture
-  cargo test --quiet required_policy_rejects_downgraded_hybrid_message -- --nocapture
+  RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet handshake_policy_matrix_interop -- --nocapture
+  RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet required_policy_rejects_downgraded_hybrid_message -- --nocapture
 )
 
 echo "==> Realtime delivery SLO regression smoke"
 (
   cd "$ROOT/itest"
-  INTEGRATION_RUN=1 cargo test --quiet realtime_user_to_user_single_message -- --ignored --nocapture
-  INTEGRATION_RUN=1 cargo test --quiet realtime_user_to_user_burst_delivery -- --ignored --nocapture
+  INTEGRATION_RUN=1 RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet realtime_user_to_user_single_message -- --ignored --nocapture
+  INTEGRATION_RUN=1 RUSTFLAGS="${RUSTFLAGS:-} ${RUST_TEST_WARNING_ALLOW_FLAGS}" cargo test --quiet realtime_user_to_user_burst_delivery -- --ignored --nocapture
 )
 
 echo "==> cargo-deny policy (bans/licenses/sources)"
