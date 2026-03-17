@@ -134,6 +134,7 @@ Every security-relevant PR should answer:
 
 Reference artifacts:
 - `docs/security/PIR_PROXY_MAILBOX_RETRIEVAL_SPIKE.md`
+- `docs/security/PIR_PROXY_DEPLOYABILITY_GRADUATION_PLAN.md`
 - `docs/security/pir-proxy-feasibility-report.v1.json`
 
 Delta summary:
@@ -144,6 +145,7 @@ Delta summary:
 Current policy:
 - No mandatory production migration to PIR/proxy retrieval.
 - Continue research profile only, behind explicit operator control and external audit prerequisites.
+- Stage advancement is governed by tracked deployability tasks: `#23`, `#24`, `#25`, `#26`.
 
 ## 10. PQ Ratchet Evolution + Forced Rekey Delta (2026-03-13)
 
