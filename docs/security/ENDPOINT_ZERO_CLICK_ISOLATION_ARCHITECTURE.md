@@ -38,8 +38,8 @@ Only typed, validated parse outputs can cross from UIB to trusted core.
 ## Current Implementation Status (2026-03-13)
 
 - Implemented in client runtime:
-  - [engine.rs](<repo-root>/client/src/engine.rs)
-  - [main.rs](<repo-root>/client/src/main.rs)
+  - [engine.rs](/client/src/engine.rs)
+  - [main.rs](/client/src/main.rs)
 - `poll_messages()` now parses untrusted envelope/inner/initial payloads only through boundary helper calls.
 - Worker lifecycle is fail-closed:
   - timeout => kill worker + single restart attempt;
@@ -49,8 +49,8 @@ Only typed, validated parse outputs can cross from UIB to trusted core.
 - Parser classes are policy-gated by allowlist (`REDOOR_UNTRUSTED_PARSER_CLASS_ALLOWLIST`).
 - Untrusted JSON inputs are pre-validated for depth/token/number budgets before typed decode.
 - CI policy gate blocks direct untrusted parsing regressions in `poll_messages()`:
-  - [check-untrusted-parser-boundary.sh](<repo-root>/scripts/check-untrusted-parser-boundary.sh)
-  - wired from [ci-rust-quality.sh](<repo-root>/scripts/ci-rust-quality.sh)
+  - [check-untrusted-parser-boundary.sh](/scripts/check-untrusted-parser-boundary.sh)
+  - wired from [ci-rust-quality.sh](/scripts/ci-rust-quality.sh)
 
 ## Invariants
 
