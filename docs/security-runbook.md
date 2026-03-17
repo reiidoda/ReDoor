@@ -38,6 +38,22 @@ NEW_KEY_FILE="/secure/redoor/relay_hmac.b64" \
 ./scripts/rotate-relay-hmac.sh
 ```
 
+Provider-backed rotation with explicit audit correlation ID:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+ADMIN_TOKEN="<admin-token>" \
+RELAY_URL="https://relay.example.com:8443" \
+KEY_MODE="provider" \
+KEY_PROVIDER_CMD="/usr/local/bin/redoor-key-provider relay_hmac" \
+CORRELATION_ID="inc-2026-03-17-relay-hmac-01" \
+./scripts/rotate-relay-hmac.sh
+```
+
+Notes:
+- `KEY_MODE` supports `local` (default), `env`, and `provider`.
+- Every key operation now emits `AUDIT_EVENT` lines containing `correlation_id` for incident timelines.
+
 Also rotate `ADMIN_TOKEN` if suspected compromised.
 
 ### A2. Scoped Credential Rotation + Revocation
@@ -75,6 +91,16 @@ cd /Users/aidei/Documents/github/redoor
 ./scripts/rotate-directory-signing-key.sh --output /secure/redoor/dir_signing_key.env --env-format
 ```
 
+To source from a pre-staged environment variable instead of local generation:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+export DIR_SIGNING_KEY_HEX="<64-hex-chars>"
+KEY_MODE="env" \
+CORRELATION_ID="inc-2026-03-17-dir-signing-01" \
+./scripts/rotate-directory-signing-key.sh --output /secure/redoor/dir_signing_key.env --env-format
+```
+
 Restart directory with rotated `DIR_SIGNING_KEY_HEX`.
 
 ### C. Service TLS Rotation
@@ -83,6 +109,16 @@ Restart directory with rotated `DIR_SIGNING_KEY_HEX`.
 cd /Users/aidei/Documents/github/redoor
 ./scripts/rotate-service-cert.sh relay --cn relay.example.com --days 90
 ./scripts/rotate-service-cert.sh directory --cn directory.example.com --days 90
+```
+
+Provider mode can supply a PEM private key while preserving audit traceability:
+
+```bash
+cd /Users/aidei/Documents/github/redoor
+KEY_MODE="provider" \
+KEY_PROVIDER_CMD="/usr/local/bin/redoor-key-provider relay_tls_key_pem" \
+CORRELATION_ID="inc-2026-03-17-relay-cert-01" \
+./scripts/rotate-service-cert.sh relay --cn relay.example.com --days 90
 ```
 
 ## 4. Verification Checklist
