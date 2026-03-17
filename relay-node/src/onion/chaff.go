@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	defaultChaffIntervalMin    = 1500 * time.Millisecond
-	defaultChaffIntervalMax    = 3500 * time.Millisecond
+	defaultChaffIntervalFloor  = 1500 * time.Millisecond
+	defaultChaffIntervalCeil   = 3500 * time.Millisecond
 	defaultChaffPayloadMin     = 96
 	defaultChaffPayloadMax     = 320
 	defaultChaffBudgetPerMin   = 120
@@ -135,8 +135,8 @@ func NewRelayChaffGenerator(
 func NewRelayChaffGeneratorFromEnv(forwarder *MixForwarder) *RelayChaffGenerator {
 	cfg := RelayChaffConfig{
 		Enabled:        strings.TrimSpace(os.Getenv("RELAY_CHAFF_ENABLED")) == "1",
-		IntervalMin:    parseMillisEnv("RELAY_CHAFF_INTERVAL_MIN_MS", defaultChaffIntervalMin),
-		IntervalMax:    parseMillisEnv("RELAY_CHAFF_INTERVAL_MAX_MS", defaultChaffIntervalMax),
+		IntervalMin:    parseMillisEnv("RELAY_CHAFF_INTERVAL_MIN_MS", defaultChaffIntervalFloor),
+		IntervalMax:    parseMillisEnv("RELAY_CHAFF_INTERVAL_MAX_MS", defaultChaffIntervalCeil),
 		PayloadMin:     parsePositiveIntEnv("RELAY_CHAFF_PAYLOAD_MIN_BYTES", defaultChaffPayloadMin),
 		PayloadMax:     parsePositiveIntEnv("RELAY_CHAFF_PAYLOAD_MAX_BYTES", defaultChaffPayloadMax),
 		PathMinHops:    parsePositiveIntEnv("RELAY_CHAFF_PATH_MIN_HOPS", defaultChaffPathMinHops),
@@ -298,13 +298,13 @@ func (g *RelayChaffGenerator) forwardWithTimeout(targetURL, msgID string, packet
 }
 
 func (g *RelayChaffGenerator) nextInterval() time.Duration {
-	min := g.cfg.IntervalMin
-	max := g.cfg.IntervalMax
-	if max <= min {
-		return min
+	intervalFloor := g.cfg.IntervalMin
+	intervalCeil := g.cfg.IntervalMax
+	if intervalCeil <= intervalFloor {
+		return intervalFloor
 	}
-	delta := max - min
-	return min + time.Duration(mrand.Int63n(int64(delta)+1))
+	delta := intervalCeil - intervalFloor
+	return intervalFloor + time.Duration(mrand.Int63n(int64(delta)+1))
 }
 
 func (g *RelayChaffGenerator) consumeBudgetToken(now time.Time) bool {
@@ -387,21 +387,21 @@ func (g *RelayChaffGenerator) pickHopCount() int {
 	if len(g.peers) == 0 {
 		return 0
 	}
-	min := g.cfg.PathMinHops
-	max := g.cfg.PathMaxHops
-	if min < 1 {
-		min = 1
+	hopMin := g.cfg.PathMinHops
+	hopMax := g.cfg.PathMaxHops
+	if hopMin < 1 {
+		hopMin = 1
 	}
-	if max < min {
-		max = min
+	if hopMax < hopMin {
+		hopMax = hopMin
 	}
-	if max > len(g.peers) {
-		max = len(g.peers)
+	if hopMax > len(g.peers) {
+		hopMax = len(g.peers)
 	}
-	if min > max {
-		min = max
+	if hopMin > hopMax {
+		hopMin = hopMax
 	}
-	return randomIntRange(min, max)
+	return randomIntRange(hopMin, hopMax)
 }
 
 func pickUniquePeers(peers []RelayMixPeer, count int) []RelayMixPeer {
@@ -438,11 +438,11 @@ func shufflePeers(peers []RelayMixPeer) {
 	}
 }
 
-func randomIntRange(min, max int) int {
-	if max <= min {
-		return min
+func randomIntRange(rangeStart, rangeEnd int) int {
+	if rangeEnd <= rangeStart {
+		return rangeStart
 	}
-	return min + mrand.Intn(max-min+1)
+	return rangeStart + mrand.Intn(rangeEnd-rangeStart+1)
 }
 
 func parseRelayChaffPeersEnv(raw string) ([]RelayMixPeer, error) {
@@ -535,7 +535,7 @@ func dedupePeers(input []RelayMixPeer) []RelayMixPeer {
 
 func normalizeRelayChaffConfig(cfg RelayChaffConfig, peerCount int) RelayChaffConfig {
 	if cfg.IntervalMin <= 0 {
-		cfg.IntervalMin = defaultChaffIntervalMin
+		cfg.IntervalMin = defaultChaffIntervalFloor
 	}
 	if cfg.IntervalMax < cfg.IntervalMin {
 		cfg.IntervalMax = cfg.IntervalMin

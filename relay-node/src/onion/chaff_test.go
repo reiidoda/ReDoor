@@ -105,7 +105,7 @@ func TestRelayChaffGenerator_BudgetGuardsThrottleExcessEmission(t *testing.T) {
 			BudgetPerMin: 1,
 		},
 		[]RelayMixPeer{peer1, peer2},
-		func(targetURL, msgID string, packet []byte) error {
+		func(_ string, _ string, _ []byte) error {
 			sends.Add(1)
 			return nil
 		},
@@ -143,7 +143,7 @@ func TestRelayChaffGenerator_StartEmitsTrafficWithinBudget(t *testing.T) {
 			BudgetPerMin: 6000, // generous budget for test run duration
 		},
 		[]RelayMixPeer{peer1, peer2},
-		func(targetURL, msgID string, packet []byte) error {
+		func(_ string, _ string, _ []byte) error {
 			sends.Add(1)
 			return nil
 		},
