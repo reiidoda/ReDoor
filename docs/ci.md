@@ -3,7 +3,7 @@
 Primary local command:
 
 ```bash
-cd /Users/aidei/Documents/github/redoor
+cd <repo-root>
 make ci
 ```
 
@@ -23,6 +23,7 @@ make ci
 - Client traffic-anonymity regression gate: `./scripts/ci-anonymity-regression.sh`
 - Realtime reliability soak: `make ci-reliability-soak`
 - Release reproducibility check: `make ci-release-integrity`
+- Multi-language bug scanner: `make ci-bugscan` or `./scripts/ci-bugscan.sh`
 
 ## 2. Security Gate Workflows
 
@@ -36,6 +37,7 @@ Runs on `pull_request` and pushes to `main`:
 - Parser fuzz regression gate (`scripts/ci-parser-fuzz.sh`)
 - Anonymity regression gate (`scripts/ci-anonymity-regression.sh`)
 - Go quality/security (`scripts/ci-go-quality.sh`)
+- Bugscan SARIF annotations (`scripts/ci-bugscan.sh --strict --sarif ...`)
 - Secret scan (`gitleaks`)
 - Artifact upload (`client/artifacts/anonymity/*.json`)
 
@@ -131,7 +133,21 @@ Runs on tag pushes (`v*`) and manual trigger:
 
 `./scripts/ci.sh` remains available for broad best-effort checks, but `make ci` and security workflows are canonical.
 
-## 5. Reproducibility Notes
+## 5. SpotBugs-Style Multi-Language Scanner
+
+- Script: `scripts/ci-bugscan.sh`
+- Goal: aggregate bug/warning/error checks across Rust, Go, shell, and optional Swift into one summary.
+- Default behavior:
+  - runs Rust and Go quality/security scripts
+  - runs shell static checks (`shfmt`, `shellcheck`) on `scripts/*.sh`
+  - skips Swift unless explicitly enabled
+- Strict behavior (`--strict`): missing optional scanner tools fail the run instead of being skipped.
+- Optional machine-readable output: `--summary-json <path>`.
+- Optional code-scanning output: `--sarif <path>`.
+- In GitHub Actions, SARIF is uploaded by the `Bugscan SARIF` job in `.github/workflows/security-gates.yml` for PR annotations.
+- See `docs/BUGSCAN.md` for command examples.
+
+## 6. Reproducibility Notes
 
 - Rust toolchain is pinned by `rust-toolchain.toml` (`stable`, `clippy`, `rustfmt`).
 - Go version is controlled by `relay-node/go.mod` and CI `check-latest: true`.

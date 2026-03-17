@@ -170,6 +170,63 @@ jobs:
         shell: bash
         run: ./scripts/ci-go-quality.sh
 
+  bugscan-sarif:
+    name: Bugscan SARIF
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: relay-node/go.mod
+          check-latest: true
+
+      - name: Install bugscan tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq shellcheck shfmt
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run bugscan and generate SARIF
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/ci-bugscan.sh \
+            --strict \
+            --summary-json artifacts/bugscan-summary.json \
+            --sarif artifacts/bugscan.sarif
+
+      - name: Upload bugscan summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bugscan-summary
+          path: artifacts/bugscan-summary.json
+          if-no-files-found: warn
+
+      - name: Upload bugscan SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: artifacts/bugscan.sarif
+          category: redoor-multilang-bugscan
+
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
