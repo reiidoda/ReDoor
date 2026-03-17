@@ -1,0 +1,50 @@
+name: Reliability Soak
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  soak-reconnect-chaos:
+    name: Realtime Soak + Reconnect Chaos
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: relay-node/go.mod
+          check-latest: true
+
+      - name: Run reliability soak checks
+        shell: bash
+        env:
+          RELIABILITY_SOAK_CYCLES: "8"
+          RELIABILITY_SOAK_MESSAGES_PER_CYCLE: "32"
+          RELIABILITY_RELAY_DOWN_MS: "1000"
+          RELIABILITY_DELIVERY_TIMEOUT_MS: "7000"
+          RELIABILITY_RECONNECT_TIMEOUT_MS: "18000"
+          RELIABILITY_MIN_DELIVERY_RATIO: "0.99"
+          RELIABILITY_MAX_RECONNECT_LATENCY_MS: "10000"
+          RELIABILITY_MAX_RUNTIME_GROWTH_BYTES: "262144"
+        run: ./scripts/ci-reliability-soak.sh
+
+      - name: Upload reliability artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-soak-artifacts
+          path: itest/artifacts/*.json
+          if-no-files-found: warn

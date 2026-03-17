@@ -1,0 +1,16 @@
+run:
+  timeout: 3m
+  modules-download-mode: readonly
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gosimple
+    - errcheck
+    - ineffassign
+    - revive
+issues:
+  exclude-rules:
+    - linters:
+        - revive
+      text: "blank-imports"

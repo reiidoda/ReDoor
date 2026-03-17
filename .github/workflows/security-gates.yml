@@ -1,0 +1,186 @@
+name: Security Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ram-only-policy:
+    name: RAM-Only Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce RAM-only no-persistence policy
+        shell: bash
+        run: ./scripts/check-ram-only-policy.sh
+
+  swift-quality:
+    name: Swift Quality & Static Analysis
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Swift quality tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install swiftlint swiftformat
+
+      - name: Run Swift quality gates
+        shell: bash
+        run: ./scripts/ci-swift-quality.sh
+
+  rust-quality:
+    name: Rust Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust quality tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+
+      - name: Run Rust quality gates
+        shell: bash
+        run: ./scripts/ci-rust-quality.sh
+
+      - name: Run Memory Budget Regressions
+        shell: bash
+        run: ./scripts/ci-memory-regression.sh
+
+  parser-fuzz-regression:
+    name: Parser Fuzz Regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run parser fuzz regression gate
+        shell: bash
+        run: ./scripts/ci-parser-fuzz.sh
+
+  memory-hygiene:
+    name: Memory Hygiene Regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run memory hygiene regression gate
+        shell: bash
+        run: ./scripts/ci-memory-hygiene.sh
+
+  rollback-drill-rehearsal:
+    name: Rollback Drill Rehearsal
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run rollback rehearsal harness
+        shell: bash
+        run: ./scripts/ci-drill-rehearsal.sh
+
+  anonymity-regression:
+    name: Anonymity Regression Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run anonymity regression gate
+        shell: bash
+        env:
+          REDOOR_ALLOW_ANONYMITY_REGRESSION: ${{ vars.REDOOR_ALLOW_ANONYMITY_REGRESSION }}
+          REDOOR_ANONYMITY_OVERRIDE_REASON: ${{ vars.REDOOR_ANONYMITY_OVERRIDE_REASON }}
+        run: ./scripts/ci-anonymity-regression.sh
+
+      - name: Upload anonymity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anonymity-regression-artifacts
+          path: client/artifacts/anonymity/*.json
+          if-no-files-found: warn
+
+  go-quality:
+    name: Go Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: relay-node/go.mod
+          check-latest: true
+
+      - name: Install Go quality tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run Go quality gates
+        shell: bash
+        run: ./scripts/ci-go-quality.sh
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml

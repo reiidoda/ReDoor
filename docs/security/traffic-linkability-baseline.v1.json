@@ -1,0 +1,38 @@
+{
+  "baseline_version": "traffic_linkability_baseline.v1",
+  "metric_version": "traffic_linkability.v1",
+  "seed": 8795840621457506598,
+  "scenario_thresholds": [
+    {
+      "scenario": "idle",
+      "max_top1_linkability": 1.0,
+      "max_unresolved_rate": 0.02,
+      "min_estimated_anonymity_set_size": 1.8
+    },
+    {
+      "scenario": "burst",
+      "max_top1_linkability": 0.98,
+      "max_unresolved_rate": 0.02,
+      "min_estimated_anonymity_set_size": 6.8
+    },
+    {
+      "scenario": "mixed_real_chaff",
+      "max_top1_linkability": 0.69,
+      "max_unresolved_rate": 0.02,
+      "min_estimated_anonymity_set_size": 7.2
+    },
+    {
+      "scenario": "relay_churn",
+      "max_top1_linkability": 0.57,
+      "max_unresolved_rate": 0.02,
+      "min_estimated_anonymity_set_size": 6.6
+    }
+  ],
+  "global_thresholds": {
+    "baseline_weighted_top1_linkability": 0.7604166666666666,
+    "max_weighted_top1_linkability": 0.79,
+    "max_weighted_top1_regression_delta": 0.025,
+    "max_total_unresolved_rate": 0.02,
+    "min_total_delivered_real_messages": 180
+  }
+}

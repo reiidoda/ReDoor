@@ -1,0 +1,19 @@
+[package]
+name = "redoor-fuzz"
+edition = "2021"
+publish = false
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+anyhow = "1"
+hex = "0.4"
+
+[dependencies.redoor-client]
+path = "../"
+features = ["pq"]
+
+[workspace]
+members = ["."]
+
+[package.metadata]
+fuzz = true
