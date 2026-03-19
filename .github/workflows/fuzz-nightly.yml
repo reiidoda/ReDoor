@@ -1,0 +1,41 @@
+name: Fuzz Nightly
+
+on:
+  schedule:
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser-fuzz-nightly:
+    name: Parser Fuzz Nightly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run parser fuzz regression gate
+        shell: bash
+        run: ./scripts/ci-parser-fuzz.sh
+
+      - name: Generate fuzz corpus metrics artifact
+        shell: bash
+        run: ./scripts/generate-fuzz-corpus-metrics.sh
+
+      - name: Upload fuzz artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: fuzz-nightly-artifacts
+          path: |
+            itest/artifacts/fuzz-corpus-metrics.json
+            client/fuzz/corpus/**
+          if-no-files-found: warn
+

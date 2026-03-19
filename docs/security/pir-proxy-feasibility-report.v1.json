@@ -1,0 +1,106 @@
+{
+  "report_version": "pir_proxy_mailbox_feasibility.v1",
+  "seed": 88679782359078,
+  "samples": 10000,
+  "scenario": {
+    "relay_count": 3,
+    "relay_quorum": 1,
+    "relay_up_probability": 0.972,
+    "proxy_up_probability": 0.985,
+    "notes": [
+      "Model uses deterministic synthetic latency and availability draws; values are comparative, not SLA guarantees.",
+      "Current baseline reflects existing mirrored relay fanout with quorum merge and wait-for-all completion.",
+      "PIR candidate models a two-server non-colluding design with heavy CPU/bandwidth overhead."
+    ]
+  },
+  "strategies": [
+    {
+      "strategy": "baseline_split_retrieval",
+      "summary": "Current production path: direct client fanout to mirrored relays with quorum merge",
+      "metrics": {
+        "availability_success_rate": 1.0,
+        "mean_latency_ms": 596.711,
+        "p50_latency_ms": 555.487,
+        "p95_latency_ms": 1300.0,
+        "p99_latency_ms": 1300.0,
+        "client_uplink_kib_per_fetch": 1.23,
+        "client_downlink_kib_per_fetch": 2.168,
+        "infra_total_kib_per_fetch": 3.398,
+        "client_cpu_ms_per_fetch": 1.8,
+        "infra_cpu_ms_per_fetch": 8.7
+      },
+      "privacy": {
+        "endpoint_exposure_score": 1.0,
+        "receiver_interest_exposure_score": 1.0,
+        "interpretation": "Direct endpoint-to-relay fetch; strongest simplicity, weakest endpoint metadata shielding."
+      },
+      "operational_notes": [
+        "No extra trust domain; relies on independent relay operators and quorum policy.",
+        "Client endpoint metadata is still directly exposed to every queried relay."
+      ]
+    },
+    {
+      "strategy": "proxy_fanout_retrieval",
+      "summary": "Client queries a privacy proxy, proxy fans out to relay mirrors and returns merged result",
+      "metrics": {
+        "availability_success_rate": 0.9859,
+        "mean_latency_ms": 850.594,
+        "p50_latency_ms": 810.359,
+        "p95_latency_ms": 1345.0,
+        "p99_latency_ms": 1410.0,
+        "client_uplink_kib_per_fetch": 0.459,
+        "client_downlink_kib_per_fetch": 0.771,
+        "infra_total_kib_per_fetch": 4.658,
+        "client_cpu_ms_per_fetch": 1.2,
+        "infra_cpu_ms_per_fetch": 16.0
+      },
+      "privacy": {
+        "endpoint_exposure_score": 0.52,
+        "receiver_interest_exposure_score": 0.64,
+        "interpretation": "Moderate metadata improvement by hiding endpoint from relays, with central proxy trust trade-off."
+      },
+      "operational_notes": [
+        "Adds one trusted privacy proxy blast-radius; proxy compromise can re-link clients to receivers.",
+        "Improves relay-side unlinkability but increases infrastructure complexity and abuse-governance load."
+      ]
+    },
+    {
+      "strategy": "two_server_pir_proxy",
+      "summary": "Research candidate: two-server PIR-style retrieval mediated by proxy",
+      "metrics": {
+        "availability_success_rate": 0.9303,
+        "mean_latency_ms": 1214.997,
+        "p50_latency_ms": 1212.455,
+        "p95_latency_ms": 1520.0,
+        "p99_latency_ms": 1520.0,
+        "client_uplink_kib_per_fetch": 6.426,
+        "client_downlink_kib_per_fetch": 10.801,
+        "infra_total_kib_per_fetch": 49.219,
+        "client_cpu_ms_per_fetch": 7.6,
+        "infra_cpu_ms_per_fetch": 58.0
+      },
+      "privacy": {
+        "endpoint_exposure_score": 0.44,
+        "receiver_interest_exposure_score": 0.27,
+        "interpretation": "Best theoretical receiver-interest protection, but only if non-colluding servers and high compute budget hold."
+      },
+      "operational_notes": [
+        "Strongest receiver-interest privacy under non-collusion assumption.",
+        "Current performance/cost envelope is not suitable for always-on mobile polling path."
+      ]
+    }
+  ],
+  "recommendation": {
+    "decision": "NO-GO for mandatory PIR/proxy production rollout now; GO for optional research profile behind explicit operator flag",
+    "rationale": [
+      "Proxy fanout improves endpoint exposure score from 1.000 to 0.520, but introduces a concentration trust domain.",
+      "Two-server PIR candidate reduces receiver-interest exposure to 0.270, but adds 6.7x infra CPU and 5.0x client downlink versus baseline.",
+      "PIR availability (0.930) materially underperforms baseline (1.000) under realistic relay/proxy outage assumptions."
+    ],
+    "next_steps": [
+      "Keep current multi-relay split retrieval as default with stronger relay diversity and anti-correlation controls.",
+      "Prototype proxy fanout only in high-risk mode with strict no-log attestations, jurisdiction split, and external audit before rollout.",
+      "Revisit PIR if practical latency can stay within +35% p95 and infra CPU within 3x baseline under mobile polling constraints."
+    ]
+  }
+}

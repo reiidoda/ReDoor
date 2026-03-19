@@ -1,0 +1,54 @@
+name: PR Policy
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  security-pr-checklist:
+    name: Security PR Checklist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate security-relevant PR checklist
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+
+          body = os.getenv("PR_BODY") or ""
+
+          required_lines = [
+              "This PR is security-relevant.",
+              "If security-relevant: I updated `docs/security/control-matrix.csv`, or explained why no mapped control changed.",
+              "If security-relevant: I updated threat model, runbook, release, or contributor docs where needed.",
+              "If security-relevant: I documented rollback/containment considerations.",
+              "If security-relevant: I documented telemetry, alerting, or observability impact.",
+          ]
+
+          def is_checked(label: str) -> bool:
+              normalized = label.lower()
+              for line in body.splitlines():
+                  lower = line.lower().strip()
+                  if lower.startswith("- [x]") and normalized in lower:
+                      return True
+              return False
+
+          if not is_checked(required_lines[0]):
+              print("PR is not marked as security-relevant; checklist enforcement skipped.")
+              sys.exit(0)
+
+          missing = [label for label in required_lines[1:] if not is_checked(label)]
+          if missing:
+              print("Incomplete security-relevant PR checklist:")
+              for label in missing:
+                  print(f" - {label}")
+              sys.exit(1)
+
+          print("Security-relevant PR checklist is complete.")
+          PY

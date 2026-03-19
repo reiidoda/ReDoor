@@ -1,0 +1,62 @@
+included:
+  - RedoorApp/RedoorApp
+  - RedoorApp/RedoorAppTests
+  - RedoorApp/RedoorAppUITests
+
+excluded:
+  - RedoorApp/RedoorApp.xcodeproj
+  - RedoorApp/RedoorApp/Application/Assets.xcassets
+
+only_rules:
+  - empty_count
+  - custom_rules
+
+custom_rules:
+  no_userdefaults:
+    name: "No UserDefaults"
+    regex: "\\bUserDefaults\\b"
+    message: "RAM-only policy forbids UserDefaults usage."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_appstorage:
+    name: "No AppStorage"
+    regex: "@AppStorage\\b"
+    message: "RAM-only policy forbids @AppStorage usage."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_coredata_import:
+    name: "No CoreData Import"
+    regex: "^\\s*import\\s+CoreData\\b"
+    message: "RAM-only policy forbids CoreData imports."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_coredata_managed_objects:
+    name: "No CoreData Managed Object APIs"
+    regex: "\\bNSManagedObject(Context|Model)?\\b"
+    message: "RAM-only policy forbids CoreData managed object APIs."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_persistent_containers:
+    name: "No Persistent Containers"
+    regex: "\\bNSPersistent(Container|StoreCoordinator|CloudKitContainer)\\b"
+    message: "RAM-only policy forbids persistent container APIs."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_direct_file_write:
+    name: "No Direct Disk Writes"
+    regex: "\\.write\\s*\\(\\s*to:\\s*"
+    message: "RAM-only policy forbids direct file writes."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"
+
+  no_disk_directory_refs:
+    name: "No Disk Directory APIs"
+    regex: "(documentsDirectory|cachesDirectory|applicationSupportDirectory)"
+    message: "RAM-only policy forbids disk directory persistence APIs."
+    severity: error
+    excluded: "RedoorApp/RedoorAppTests/.*|RedoorApp/RedoorAppUITests/.*"

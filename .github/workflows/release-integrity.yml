@@ -1,0 +1,111 @@
+name: Release Integrity
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  core-release:
+    name: Core Release + Provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: relay-node/go.mod
+          check-latest: true
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.9.2
+
+      - name: Set deterministic build timestamp
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      - name: Verify reproducible build hashes
+        shell: bash
+        run: ./scripts/verify-reproducible-build.sh
+
+      - name: Build release artifacts
+        shell: bash
+        env:
+          RELEASE_REQUIRE_SBOM: "1"
+          RELEASE_SIGN_WITH_COSIGN: "1"
+        run: ./scripts/release-build-core.sh --output-dir dist/release
+
+      - name: Verify release checksums, SBOM, and signatures
+        shell: bash
+        run: |
+          ./scripts/verify-release-integrity.sh \
+            --artifact dist/release/redoor-core-linux-amd64.tar.gz \
+            --checksum dist/release/redoor-core-linux-amd64.tar.gz.sha256 \
+            --sbom dist/release/redoor-core-linux-amd64.sbom.cdx.json \
+            --require-sbom \
+            --require-signatures \
+            --cosign-cert-identity-regex '^https://github.com/reiidoda/ReDoor/.github/workflows/release-integrity.yml@refs/(heads/main|tags/.*)$' \
+            --cosign-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: redoor-core-release
+          path: |
+            dist/release/redoor-core-linux-amd64.tar.gz
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json
+            dist/release/SHA256SUMS
+            dist/release/redoor-core-linux-amd64.tar.gz.sig
+            dist/release/redoor-core-linux-amd64.tar.gz.pem
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256.sig
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256.pem
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json.sig
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json.pem
+            dist/release/SHA256SUMS.sig
+            dist/release/SHA256SUMS.pem
+          if-no-files-found: error
+
+      - name: Attest build provenance (SLSA v1)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/release/redoor-core-linux-amd64.tar.gz
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json
+            dist/release/SHA256SUMS
+
+      - name: Publish GitHub release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/release/redoor-core-linux-amd64.tar.gz
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json
+            dist/release/SHA256SUMS
+            dist/release/redoor-core-linux-amd64.tar.gz.sig
+            dist/release/redoor-core-linux-amd64.tar.gz.pem
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256.sig
+            dist/release/redoor-core-linux-amd64.tar.gz.sha256.pem
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json.sig
+            dist/release/redoor-core-linux-amd64.sbom.cdx.json.pem
+            dist/release/SHA256SUMS.sig
+            dist/release/SHA256SUMS.pem

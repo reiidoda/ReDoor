@@ -1,0 +1,11 @@
+title = "redoor gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow known non-secret placeholders (compatible with gitleaks 8.24.x)"
+regexes = [
+  '''^redoor_relay_spki_pin_b64$''',
+  '''^c3VwZXJzZWNyZXRraWV5MDA=$''',
+]

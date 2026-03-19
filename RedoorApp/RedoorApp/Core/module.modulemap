@@ -1,0 +1,4 @@
+module redoor_client {
+  header "redoor.h"
+  export *
+}

@@ -1,0 +1,45 @@
+# OS / editor noise
+.DS_Store
+.idea/
+*.iml
+
+# Rust build output
+**/target/
+
+# Go build output
+relay-node/relay
+relay-node/bin/
+
+# Xcode / Swift local files
+**/*.xcuserstate
+**/xcuserdata/
+RedoorApp/build/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs / temp
+*.log
+*.tmp
+coverage/
+
+# Local env files
+.env
+.env.*
+
+# Local-only secrets/certs/keys
+relay-node/cert.pem
+relay-node/key.pem
+blockchain-node/node_key.hex
+
+# Local backup of absorbed nested repositories
+.git-backups/
+
+# Runtime chain state
+blockchain-node/blockchain.json
+
+# Local CI artifacts
+artifacts/
+client/artifacts/
+itest/artifacts/

@@ -1,0 +1,56 @@
+[package]
+name = "redoor-fuzz"
+edition = "2021"
+publish = false
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+serde_json = "1"
+base64 = "0.22"
+
+[dependencies.redoor-client]
+path = "../"
+features = ["pq"]
+
+[workspace]
+members = ["."]
+
+[package.metadata]
+fuzz = true
+
+[[bin]]
+name = "envelope"
+path = "fuzz_targets/envelope.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "handshake_nested_json"
+path = "fuzz_targets/handshake_nested_json.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "hmac_headers"
+path = "fuzz_targets/hmac_headers.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "inbound_decode"
+path = "fuzz_targets/inbound_decode.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "ratchet"
+path = "fuzz_targets/ratchet.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "parser_worker_ipc"
+path = "fuzz_targets/parser_worker_ipc.rs"
+test = false
+doc = false
+

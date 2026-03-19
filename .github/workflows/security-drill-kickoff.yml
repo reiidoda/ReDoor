@@ -1,0 +1,167 @@
+name: Quarterly Security Drill Kickoff
+
+on:
+  schedule:
+    - cron: '15 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: security-drill-kickoff
+  cancel-in-progress: false
+
+jobs:
+  kickoff:
+    name: Create Quarterly Drill Kickoff Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create/skip quarterly kickoff issue
+        uses: actions/github-script@v8
+        env:
+          SECURITY_DRILL_OWNERS: ${{ vars.SECURITY_DRILL_OWNERS }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = new Date();
+            const month = now.getUTCMonth() + 1;
+            const quarter = Math.floor((month - 1) / 3) + 1;
+            const year = now.getUTCFullYear();
+            const quarterStartMonths = [1, 4, 7, 10];
+            const isQuarterStart = quarterStartMonths.includes(month);
+
+            if (context.eventName === 'schedule' && !isQuarterStart) {
+              core.info(`Skipping scheduled run for non-quarter-start month ${month}`);
+              return;
+            }
+
+            const title = `Quarterly Security Drill Kickoff ${year} Q${quarter}`;
+            const ownersRaw = process.env.SECURITY_DRILL_OWNERS || '';
+            const ownerCandidates = ownersRaw
+              .split(',')
+              .map((value) => value.trim().replace(/^@/, ''))
+              .filter(Boolean);
+            const requestedAssignees = [...new Set((ownerCandidates.length > 0 ? ownerCandidates : [context.repo.owner]))].slice(0, 10);
+
+            const formatDate = (date) => date.toISOString().slice(0, 10);
+            const plusDays = (days) => {
+              const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+              date.setUTCDate(date.getUTCDate() + days);
+              return formatDate(date);
+            };
+
+            const dueDates = {
+              kickoffChecklist: plusDays(3),
+              scenarioFreeze: plusDays(10),
+              liveDrillWindow: plusDays(35),
+              retrospectiveClosure: plusDays(42),
+            };
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find((issue) => issue.title === title);
+            if (existing) {
+              core.info(`Kickoff issue already exists: #${existing.number}`);
+              return;
+            }
+
+            const ensureLabel = async (name, color, description) => {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  color,
+                  description,
+                });
+              }
+            };
+
+            await ensureLabel('security-drill', '0E8A16', 'Recurring operational security drill tasks');
+            await ensureLabel('security', 'B60205', 'Security hardening and incident readiness');
+            await ensureLabel('operations', '1D76DB', 'Operational process and readiness work');
+
+            const validAssignees = [];
+            for (const login of requestedAssignees) {
+              try {
+                await github.rest.issues.checkUserCanBeAssigned({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  assignee: login,
+                });
+                validAssignees.push(login);
+              } catch (error) {
+                core.warning(`Skipping non-assignable kickoff owner '${login}'`);
+              }
+            }
+
+            const assignees = validAssignees.length > 0 ? validAssignees : [context.repo.owner];
+            const roleOwner = {
+              incidentCommander: assignees[0],
+              securityLead: assignees[Math.min(1, assignees.length - 1)],
+              operationsLead: assignees[Math.min(2, assignees.length - 1)],
+              scribe: assignees[Math.min(3, assignees.length - 1)],
+            };
+
+            const docsBase = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/security/drills`;
+            const runbookUrl = `${docsBase}/INCIDENT_DRILL_RUNBOOK.md`;
+            const retrospectiveUrl = `${docsBase}/FIRST_DRILL_RETROSPECTIVE_TEMPLATE.md`;
+            const programUrl = `${docsBase}/QUARTERLY_DRILL_PROGRAM.md`;
+
+            const body = [
+              `Automated kickoff checklist for **${year} Q${quarter}** security drill cycle.`,
+              '',
+              '## Required Checklist',
+              `- [ ] Confirm scenario focus for this quarter and freeze success criteria.`,
+              `  - Owner: @${roleOwner.incidentCommander}`,
+              `  - Due: ${dueDates.kickoffChecklist} (UTC)`,
+              `- [ ] Assign drill roles (incident commander, security lead, operations lead, scribe).`,
+              `  - Owner: @${roleOwner.incidentCommander}`,
+              `  - Due: ${dueDates.kickoffChecklist} (UTC)`,
+              `- [ ] Snapshot current runbook/config references and attach evidence links.`,
+              `  - Owner: @${roleOwner.securityLead}`,
+              `  - Due: ${dueDates.scenarioFreeze} (UTC)`,
+              `- [ ] Schedule and execute live drill window.`,
+              `  - Owner: @${roleOwner.operationsLead}`,
+              `  - Due: ${dueDates.liveDrillWindow} (UTC)`,
+              `- [ ] Complete retrospective and open follow-up issues for unresolved actions.`,
+              `  - Owner: @${roleOwner.scribe}`,
+              `  - Due: ${dueDates.retrospectiveClosure} (UTC)`,
+              '',
+              '## Reference Links',
+              `- Quarterly program: ${programUrl}`,
+              `- Drill runbook: ${runbookUrl}`,
+              `- Retrospective template: ${retrospectiveUrl}`,
+              '',
+              '## Automation Metadata',
+              `- Generated by: .github/workflows/security-drill-kickoff.yml`,
+              `- Trigger: ${context.eventName}`,
+              `- Quarter key: ${year}-Q${quarter}`,
+              `- Assignees: ${assignees.map((owner) => `@${owner}`).join(', ')}`,
+            ].join('\n');
+
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['security-drill', 'security', 'operations'],
+              assignees,
+            });
+
+            core.info(`Created kickoff issue #${issue.number}`);

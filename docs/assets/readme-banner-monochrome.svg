@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="420" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">ReDoor monochrome banner</title>
+  <desc id="desc">Minimal black-and-white neural-tech banner with centered ReDoor title.</desc>
+
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#020202" />
+      <stop offset="55%" stop-color="#060606" />
+      <stop offset="100%" stop-color="#0b0b0b" />
+    </linearGradient>
+
+    <radialGradient id="center-glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16" />
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <pattern id="micro-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1" />
+    </pattern>
+
+    <filter id="soft-glow" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="420" rx="18" fill="url(#bg-gradient)" />
+  <rect width="1600" height="420" rx="18" fill="url(#micro-grid)" />
+  <rect width="1600" height="420" rx="18" fill="url(#center-glow)" />
+
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.2" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="84,86 210,120 298,92 392,130 488,108 594,138 688,112" />
+    <polyline points="106,312 220,274 324,304 418,266 520,296 636,258 702,278" />
+
+    <polyline points="1516,86 1390,120 1302,92 1208,130 1112,108 1006,138 912,112" />
+    <polyline points="1494,312 1380,274 1276,304 1182,266 1080,296 964,258 898,278" />
+
+    <path d="M 698 112 C 760 142, 792 170, 800 210" stroke-opacity="0.14" />
+    <path d="M 702 278 C 760 246, 790 228, 800 210" stroke-opacity="0.14" />
+    <path d="M 902 112 C 840 142, 808 170, 800 210" stroke-opacity="0.14" />
+    <path d="M 898 278 C 840 246, 810 228, 800 210" stroke-opacity="0.14" />
+  </g>
+
+  <g fill="#ffffff" fill-opacity="0.55">
+    <circle cx="84" cy="86" r="2.5" />
+    <circle cx="210" cy="120" r="2.2" />
+    <circle cx="392" cy="130" r="2.2" />
+    <circle cx="594" cy="138" r="2.4" />
+    <circle cx="688" cy="112" r="2.8" />
+
+    <circle cx="106" cy="312" r="2.4" />
+    <circle cx="324" cy="304" r="2.2" />
+    <circle cx="520" cy="296" r="2.4" />
+    <circle cx="702" cy="278" r="2.8" />
+
+    <circle cx="1516" cy="86" r="2.5" />
+    <circle cx="1390" cy="120" r="2.2" />
+    <circle cx="1208" cy="130" r="2.2" />
+    <circle cx="1006" cy="138" r="2.4" />
+    <circle cx="912" cy="112" r="2.8" />
+
+    <circle cx="1494" cy="312" r="2.4" />
+    <circle cx="1276" cy="304" r="2.2" />
+    <circle cx="1080" cy="296" r="2.4" />
+    <circle cx="898" cy="278" r="2.8" />
+  </g>
+
+  <rect x="420" y="207" width="760" height="2" fill="url(#beam)" />
+
+  <g filter="url(#soft-glow)">
+    <text
+      x="800"
+      y="230"
+      fill="#ffffff"
+      text-anchor="middle"
+      font-size="118"
+      font-weight="600"
+      letter-spacing="8"
+      font-family="'SF Pro Display','SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif"
+    >ReDoor</text>
+  </g>
+
+  <rect x="1" y="1" width="1598" height="418" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.16" />
+</svg>

@@ -1,0 +1,104 @@
+{
+  "report_id": "pq_ratchet_evolution_prototype.v1",
+  "generated_at_unix": 1773348827,
+  "seed": 11609401454496841729,
+  "total_steps": 4096,
+  "compromise_schedule": [
+    256,
+    512,
+    682,
+    1024,
+    1365,
+    2048,
+    2730,
+    3072
+  ],
+  "intervals": [
+    {
+      "pq_interval": 4,
+      "compromise_samples": 8,
+      "average_recovery_steps": 3.375,
+      "p95_recovery_steps": 4,
+      "max_recovery_steps": 4,
+      "total_pq_mixes": 2937,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 1079,
+      "ns_per_simulated_step": 32944.71484375
+    },
+    {
+      "pq_interval": 8,
+      "compromise_samples": 8,
+      "average_recovery_steps": 6.875,
+      "p95_recovery_steps": 8,
+      "max_recovery_steps": 8,
+      "total_pq_mixes": 1476,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 954,
+      "ns_per_simulated_step": 29140.146881103516
+    },
+    {
+      "pq_interval": 16,
+      "compromise_samples": 8,
+      "average_recovery_steps": 12.875,
+      "p95_recovery_steps": 16,
+      "max_recovery_steps": 16,
+      "total_pq_mixes": 745,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 909,
+      "ns_per_simulated_step": 27757.90151977539
+    },
+    {
+      "pq_interval": 24,
+      "compromise_samples": 8,
+      "average_recovery_steps": 11.875,
+      "p95_recovery_steps": 24,
+      "max_recovery_steps": 24,
+      "total_pq_mixes": 499,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 894,
+      "ns_per_simulated_step": 27307.177215576172
+    },
+    {
+      "pq_interval": 32,
+      "compromise_samples": 8,
+      "average_recovery_steps": 26.875,
+      "p95_recovery_steps": 32,
+      "max_recovery_steps": 32,
+      "total_pq_mixes": 380,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 895,
+      "ns_per_simulated_step": 27335.301727294922
+    },
+    {
+      "pq_interval": 48,
+      "compromise_samples": 8,
+      "average_recovery_steps": 26.875,
+      "p95_recovery_steps": 48,
+      "max_recovery_steps": 48,
+      "total_pq_mixes": 256,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 888,
+      "ns_per_simulated_step": 27104.962677001953
+    },
+    {
+      "pq_interval": 64,
+      "compromise_samples": 8,
+      "average_recovery_steps": 50.875,
+      "p95_recovery_steps": 64,
+      "max_recovery_steps": 64,
+      "total_pq_mixes": 197,
+      "state_size_bytes": 72,
+      "state_overhead_bytes": 8,
+      "elapsed_ms": 900,
+      "ns_per_simulated_step": 27473.363250732422
+    }
+  ],
+  "recommended_interval": 16,
+  "recommendation": "Prototype recommendation: start with pq_interval=16 for staged rollout. Require explicit telemetry in pre-production and promote to default only after external crypto review confirms acceptable overhead and recovery guarantees."
+}

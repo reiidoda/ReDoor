@@ -1,0 +1,82 @@
+name: Crypto/Protocol Remediation
+description: Track remediation work for external cryptography/protocol audit findings.
+title: "[Crypto Remediation] <short finding title>"
+labels:
+  - security
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for findings from independent audits and internal cryptographic reviews.
+  - type: input
+    id: source_report
+    attributes:
+      label: Source report / section
+      description: Audit document and section or finding id.
+      placeholder: "External Crypto Audit 2026 - Section 4.2 (F-07)"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+        - Informational
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Security impact
+      description: What security property is affected and how.
+      placeholder: "Breaks forward secrecy under ...; enables replay of ..."
+    validations:
+      required: true
+  - type: textarea
+    id: affected_components
+    attributes:
+      label: Affected components / paths
+      placeholder: "client/src/..., relay/src/..., docs/protocol.md ..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction or proof sketch
+      description: Minimal reproducible steps, PoC outline, or audit reference.
+    validations:
+      required: true
+  - type: textarea
+    id: remediation_plan
+    attributes:
+      label: Proposed remediation
+      description: Fix strategy, expected code/doc/test changes.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      placeholder: "@team-or-person"
+    validations:
+      required: true
+  - type: input
+    id: target_date
+    attributes:
+      label: Target remediation date
+      description: Use YYYY-MM-DD.
+      placeholder: "2026-03-31"
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification evidence
+      description: Commands/tests/artifacts required before closure.
+      placeholder: "./scripts/ci-rust-quality.sh; updated threat model section; PR link"
+    validations:
+      required: true

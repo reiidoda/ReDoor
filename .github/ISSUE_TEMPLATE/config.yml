@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/reiidoda/ReDoor/security/advisories/new
+    about: Report vulnerabilities privately through GitHub Security Advisories.
+  - name: Contribution guide
+    url: https://github.com/reiidoda/ReDoor/blob/main/CONTRIBUTING.md
+    about: Read contribution workflow and expectations before opening issues.
+  - name: Public roadmap
+    url: https://github.com/reiidoda/ReDoor/blob/main/docs/ROADMAP.md
+    about: Review current public priorities before proposing new work.
